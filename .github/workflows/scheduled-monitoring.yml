@@ -19,7 +19,7 @@ on:
 jobs:
   daily-monitoring:
     if: github.event_name == 'schedule' || github.event.inputs.monitoring_type == 'daily'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
@@ -119,7 +119,7 @@ jobs:
 
   weekly-analysis:
     if: github.event.inputs.monitoring_type == 'weekly'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
@@ -195,7 +195,7 @@ jobs:
 
   trend-analysis:
     if: github.event.inputs.monitoring_type == 'trend-analysis'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     
     steps:
     - name: Checkout code
@@ -250,7 +250,7 @@ jobs:
   performance-alert:
     needs: daily-monitoring
     if: always() && needs.daily-monitoring.result == 'success'
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     
     steps:
     - name: Check Performance Status
