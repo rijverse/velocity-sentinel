@@ -20,15 +20,22 @@ jobs:
         cache: 'npm'
     
     - name: Install dependencies
-      run: npm ci
+      run: |
+        set -e
+        npm ci
     
     - name: Run performance tests on PR
       run: |
+        set -e
         echo "🔍 Running performance tests on PR branch..."
         PR_START=$(date +%s)
         npm test -- --testNamePattern="Performance Benchmarks" --verbose > pr_performance.log 2>&1
         PR_END=$(date +%s)
         PR_DURATION=$((PR_END - PR_START))
+        if ! [[ "$PR_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: PR_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "PR_DURATION=${PR_DURATION}" >> $GITHUB_ENV
         cat pr_performance.log
     
@@ -38,20 +45,37 @@ jobs:
         ref: main
     
     - name: Install dependencies on main
-      run: npm ci
+      run: |
+        set -e
+        npm ci
     
     - name: Run performance tests on main
       run: |
+        set -e
         echo "🔍 Running performance tests on main branch..."
         MAIN_START=$(date +%s)
         npm test -- --testNamePattern="Performance Benchmarks" --verbose > main_performance.log 2>&1
         MAIN_END=$(date +%s)
         MAIN_DURATION=$((MAIN_END - MAIN_START))
+        if ! [[ "$MAIN_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: MAIN_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "MAIN_DURATION=${MAIN_DURATION}" >> $GITHUB_ENV
         cat main_performance.log
     
+    - name: Upload performance logs
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-logs
+        path: |
+          pr_performance.log
+          main_performance.log
+        retention-days: 14
+    
     - name: Compare results
       run: |
+        set -e
         echo "## 🔄 Performance Comparison" >> $GITHUB_STEP_SUMMARY
         echo "| Branch | Duration | Change |" >> $GITHUB_STEP_SUMMARY
         echo "|--------|----------|---------|" >> $GITHUB_STEP_SUMMARY
@@ -63,6 +87,7 @@ jobs:
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "⚠️ **Performance regression detected!**" >> $GITHUB_STEP_SUMMARY
           echo "The PR is ${REGRESSION}s slower than main branch." >> $GITHUB_STEP_SUMMARY
+          # TODO: Integrate notification or fail workflow if needed
         elif [ $PR_DURATION -lt $MAIN_DURATION ]; then
           IMPROVEMENT=$(( MAIN_DURATION - PR_DURATION ))
           echo "" >> $GITHUB_STEP_SUMMARY

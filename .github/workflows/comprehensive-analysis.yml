@@ -62,9 +62,12 @@ jobs:
             condition: ${{ github.event.inputs.include_windows_macos == 'true' || github.event_name == 'schedule' }}
     
     runs-on: ${{ matrix.runner }}
-    if: ${{ !matrix.condition || matrix.condition }}
     
     steps:
+    - name: Skip job if matrix.condition is false
+      if: ${{ contains(fromJson('["", "true"]'), matrix.condition) || matrix.condition }}
+      run: echo "Proceeding with this matrix job."
+    
     - name: Checkout code
       uses: actions/checkout@v4
     
@@ -77,6 +80,7 @@ jobs:
     - name: Runner Analysis
       id: analysis
       run: |
+        set -e
         echo "🏃‍♂️ Analyzing: ${{ matrix.runner_name }}"
         echo "💰 Cost per minute: ${{ matrix.cost_per_minute }}"
         echo "📊 Expected performance: ${{ matrix.expected_performance }}"
@@ -113,12 +117,15 @@ jobs:
         elif [ "${{ runner.os }}" = "Windows" ]; then
           # Windows system info would go here
           echo "- **System**: Windows Runner" >> analysis.md
+        else
+          echo "- **System**: Unknown OS" >> analysis.md
         fi
         
         echo "ANALYSIS_START=${ANALYSIS_START}" >> $GITHUB_ENV
     
     - name: Dependency Installation Analysis
       run: |
+        set -e
         echo "📦 Dependency installation analysis..."
         INSTALL_START=$(date +%s)
         
@@ -130,10 +137,19 @@ jobs:
         
         INSTALL_END=$(date +%s)
         INSTALL_DURATION=$((INSTALL_END - INSTALL_START))
+        if ! [[ "$INSTALL_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: INSTALL_DURATION is not a number!" >&2
+          exit 1
+        fi
         
         # Analyze installation log
-        PACKAGE_COUNT=$(npm list --depth=0 2>/dev/null | grep -c "├\|└" || echo "0")
-        NODE_MODULES_SIZE=$(du -sh node_modules 2>/dev/null | cut -f1 || echo "Unknown")
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          PACKAGE_COUNT=$(npm list --depth=0 2>/dev/null | grep -c "├\|└" || echo "0")
+          NODE_MODULES_SIZE=$(du -sh node_modules 2>/dev/null | cut -f1 || echo "Unknown")
+        else
+          PACKAGE_COUNT="N/A"
+          NODE_MODULES_SIZE="N/A"
+        fi
         
         echo "INSTALL_DURATION=${INSTALL_DURATION}" >> $GITHUB_ENV
         echo "PACKAGE_COUNT=${PACKAGE_COUNT}" >> $GITHUB_ENV
@@ -146,6 +162,7 @@ jobs:
     
     - name: Performance Benchmark Execution
       run: |
+        set -e
         echo "⚡ Running performance benchmarks..."
         PERF_START=$(date +%s)
         
@@ -154,6 +171,10 @@ jobs:
         
         PERF_END=$(date +%s)
         PERF_DURATION=$((PERF_END - PERF_START))
+        if ! [[ "$PERF_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: PERF_DURATION is not a number!" >&2
+          exit 1
+        fi
         
         echo "PERF_DURATION=${PERF_DURATION}" >> $GITHUB_ENV
         
@@ -171,6 +192,7 @@ jobs:
     
     - name: Build Performance Analysis
       run: |
+        set -e
         echo "🏗️ Build performance analysis..."
         BUILD_START=$(date +%s)
         
@@ -179,21 +201,37 @@ jobs:
         npx tsc --noEmit
         TS_END=$(date +%s)
         TS_DURATION=$((TS_END - TS_START))
+        if ! [[ "$TS_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: TS_DURATION is not a number!" >&2
+          exit 1
+        fi
         
         # Webpack build
         WEBPACK_START=$(date +%s)
         npm run build > build.log 2>&1
         WEBPACK_END=$(date +%s)
         WEBPACK_DURATION=$((WEBPACK_END - WEBPACK_START))
+        if ! [[ "$WEBPACK_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: WEBPACK_DURATION is not a number!" >&2
+          exit 1
+        fi
         
         # Linting
         LINT_START=$(date +%s)
         npm run lint > lint.log 2>&1 || true  # Don't fail on lint errors
         LINT_END=$(date +%s)
         LINT_DURATION=$((LINT_END - LINT_START))
+        if ! [[ "$LINT_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: LINT_DURATION is not a number!" >&2
+          exit 1
+        fi
         
         BUILD_END=$(date +%s)
         BUILD_TOTAL=$((BUILD_END - BUILD_START))
+        if ! [[ "$BUILD_TOTAL" =~ ^[0-9]+$ ]]; then
+          echo "Error: BUILD_TOTAL is not a number!" >&2
+          exit 1
+        fi
         
         echo "TS_DURATION=${TS_DURATION}" >> $GITHUB_ENV
         echo "WEBPACK_DURATION=${WEBPACK_DURATION}" >> $GITHUB_ENV
@@ -208,9 +246,13 @@ jobs:
     
     - name: Calculate Performance Metrics
       run: |
+        set -e
         ANALYSIS_END=$(date +%s)
         TOTAL_DURATION=$((ANALYSIS_END - ANALYSIS_START))
-        
+        if ! [[ "$TOTAL_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: TOTAL_DURATION is not a number!" >&2
+          exit 1
+        fi
         # Calculate performance score (baseline: ubuntu-latest = 100)
         BASELINE_TIME=300
         PERFORMANCE_SCORE=$((BASELINE_TIME * 100 / TOTAL_DURATION))
@@ -246,8 +288,21 @@ jobs:
         echo "- **Rating**: ${RATING}" >> analysis.md
         echo "RATING=${RATING}" >> $GITHUB_ENV
     
+    - name: Upload logs and reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: comprehensive-analysis-logs
+        path: |
+          install.log
+          perf.log
+          build.log
+          lint.log
+          analysis.md
+        retention-days: 21
+    
     - name: Generate Detailed Report
       run: |
+        # TODO: Integrate notification or fail workflow if needed
         # Create JSON report for aggregation
         cat > runner-report.json << EOF
         {

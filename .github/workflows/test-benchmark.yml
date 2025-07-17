@@ -31,6 +31,7 @@ jobs:
       
     - name: Runner Context
       run: |
+        set -e
         echo "🏃‍♂️ Running on: ${{ github.event.inputs.runner_type || 'ubuntu-latest' }}"
         echo "🔧 Node.js Version: ${{ matrix.node-version }}"
         echo "📊 System Info:"
@@ -51,53 +52,79 @@ jobs:
         cache: 'npm'
     
     - name: Record start time
-      run: echo "WORKFLOW_START_TIME=$(date +%s)" >> $GITHUB_ENV
+      run: |
+        set -e
+        echo "WORKFLOW_START_TIME=$(date +%s)" >> $GITHUB_ENV
     
     - name: Install dependencies
       run: |
+        set -e
         echo "⏱️ Installing dependencies..."
         INSTALL_START=$(date +%s)
         npm ci
         INSTALL_END=$(date +%s)
         INSTALL_DURATION=$((INSTALL_END - INSTALL_START))
+        if ! [[ "$INSTALL_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: INSTALL_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "📦 Dependencies installed in ${INSTALL_DURATION}s"
         echo "INSTALL_DURATION=${INSTALL_DURATION}" >> $GITHUB_ENV
     
     - name: Run unit tests with timing
       run: |
+        set -e
         echo "⏱️ Starting unit test execution..."
         TEST_START=$(date +%s)
         npm test -- --testNamePattern="^(?!.*Performance Benchmarks)" --verbose --testTimeout=30000
         TEST_END=$(date +%s)
         TEST_DURATION=$((TEST_END - TEST_START))
+        if ! [[ "$TEST_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: TEST_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "✅ Unit tests completed in ${TEST_DURATION}s"
         echo "TEST_DURATION=${TEST_DURATION}" >> $GITHUB_ENV
     
     - name: Run performance benchmarks
       run: |
+        set -e
         echo "⏱️ Running performance benchmarks..."
         PERF_START=$(date +%s)
         npm test -- --testNamePattern="Performance Benchmarks" --verbose --testTimeout=180000
         PERF_END=$(date +%s)
         PERF_DURATION=$((PERF_END - PERF_START))
+        if ! [[ "$PERF_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: PERF_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "🚀 Performance benchmarks completed in ${PERF_DURATION}s"
         echo "PERF_DURATION=${PERF_DURATION}" >> $GITHUB_ENV
     
     - name: Run tests with coverage
       run: |
+        set -e
         echo "⏱️ Running tests with coverage..."
         COVERAGE_START=$(date +%s)
         npm run test:coverage
         COVERAGE_END=$(date +%s)
         COVERAGE_DURATION=$((COVERAGE_END - COVERAGE_START))
+        if ! [[ "$COVERAGE_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: COVERAGE_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "📊 Coverage analysis completed in ${COVERAGE_DURATION}s"
         echo "COVERAGE_DURATION=${COVERAGE_DURATION}" >> $GITHUB_ENV
     
     - name: Calculate total workflow time
       run: |
+        set -e
         WORKFLOW_END_TIME=$(date +%s)
         TOTAL_DURATION=$((WORKFLOW_END_TIME - WORKFLOW_START_TIME))
-        echo "TOTAL_DURATION=${TOTAL_DURATION}" >> $GITHUB_ENV
+        if ! [[ "$TOTAL_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: TOTAL_DURATION is not a number!" >&2
+          exit 1
+        fi
         
         # Calculate performance score relative to baseline
         BASELINE_TIME=300  # Expected time for ubuntu-latest
@@ -145,6 +172,7 @@ jobs:
     
     - name: Performance threshold validation
       run: |
+        set -e
         echo "🎯 Validating performance thresholds for ${{ env.RUNNER_TYPE }}..."
         
         # Define performance thresholds based on runner type
@@ -213,6 +241,7 @@ jobs:
         else
           echo "⚠️ ${THRESHOLD_VIOLATIONS} performance threshold(s) exceeded"
           echo "This may indicate performance regression or need for threshold adjustment"
+          # TODO: Integrate notification or fail workflow if needed
         fi
         
         echo ""

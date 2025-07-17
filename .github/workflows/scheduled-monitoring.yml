@@ -33,6 +33,7 @@ jobs:
     
     - name: Daily Performance Check
       run: |
+        set -e
         echo "📅 Daily performance monitoring - $(date)"
         echo "MONITORING_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
         echo "MONITORING_START=$(date +%s)" >> $GITHUB_ENV
@@ -42,6 +43,7 @@ jobs:
     
     - name: Baseline Performance Test
       run: |
+        set -e
         BASELINE_START=$(date +%s)
         
         # Install dependencies
@@ -52,12 +54,17 @@ jobs:
         
         BASELINE_END=$(date +%s)
         BASELINE_DURATION=$((BASELINE_END - BASELINE_START))
+        if ! [[ "$BASELINE_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: BASELINE_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "BASELINE_DURATION=${BASELINE_DURATION}" >> $GITHUB_ENV
         
         echo "⚡ Baseline performance: ${BASELINE_DURATION}s"
     
     - name: Performance Trend Analysis
       run: |
+        set -e
         # Create daily performance record
         cat > daily-performance.json << EOF
         {
@@ -87,6 +94,7 @@ jobs:
     
     - name: Generate Daily Report
       run: |
+        set -e
         echo "## 📅 Daily Performance Report - ${MONITORING_DATE}" >> $GITHUB_STEP_SUMMARY
         echo "" >> $GITHUB_STEP_SUMMARY
         echo "| Metric | Value | Status |" >> $GITHUB_STEP_SUMMARY
@@ -117,6 +125,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
     
+    - name: Download jq
+      run: |
+        set -e
+        sudo apt-get update && sudo apt-get install -y jq
+    
     - name: Download Recent Daily Data
       uses: actions/download-artifact@v3
       with:
@@ -125,6 +138,7 @@ jobs:
     
     - name: Weekly Trend Analysis
       run: |
+        set -e
         echo "📈 Analyzing weekly performance trends..."
         
         # Collect last 7 days of data
@@ -141,8 +155,10 @@ jobs:
         echo "|------|----------|--------|--------|" >> weekly-report.md
         
         PREVIOUS_DURATION=""
+        FOUND_DATA=0
         for file in daily-data/daily-performance-*/daily-performance.json; do
           if [ -f "$file" ]; then
+            FOUND_DATA=1
             DATE=$(jq -r '.date' "$file")
             DURATION=$(jq -r '.baseline_duration' "$file")
             STATUS=$(jq -r '.status' "$file")
@@ -161,6 +177,9 @@ jobs:
           fi
         done
         
+        if [ $FOUND_DATA -eq 0 ]; then
+          echo "| No data found for the past week | - | - | - |" >> weekly-report.md
+        fi
         echo "" >> weekly-report.md
         echo "### 📈 Key Insights" >> weekly-report.md
         echo "- Performance trend analysis for the past week" >> weekly-report.md
@@ -184,6 +203,7 @@ jobs:
     
     - name: Long-term Trend Analysis
       run: |
+        set -e
         echo "📊 Performing long-term trend analysis..."
         
         # This would typically analyze historical data
@@ -235,16 +255,15 @@ jobs:
     steps:
     - name: Check Performance Status
       run: |
+        set -e
         # This job would typically integrate with notification systems
         # For demonstration, we'll create alert logic
-        
+        # TODO: Integrate with Slack, email, or GitHub Issues for real alerts
         echo "🔔 Checking for performance alerts..."
-        
         # In a real implementation, this would:
         # - Check the daily monitoring results
         # - Send notifications via Slack, email, etc.
         # - Create GitHub issues for performance degradation
         # - Update status dashboards
-        
         echo "📊 Performance monitoring complete"
         echo "✅ No critical alerts at this time"

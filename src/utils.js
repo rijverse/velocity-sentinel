@@ -52,5 +52,5 @@ module.exports = {
   isPrime,
   fibonacci,
   sortArray,
-  asyncOperation
+  asyncOperation,
 };

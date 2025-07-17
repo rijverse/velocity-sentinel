@@ -33,6 +33,7 @@ jobs:
     steps:
     - name: Runner Information
       run: |
+        set -e
         echo "🏃‍♂️ Testing Runner: ${{ github.event.inputs.runner_type }}"
         echo "💻 Runner OS: ${{ runner.os }}"
         echo "🏗️ Runner Architecture: ${{ runner.arch }}"
@@ -51,6 +52,10 @@ jobs:
           echo "- **CPU Info**: $(nproc) cores" >> $GITHUB_STEP_SUMMARY
           echo "- **Memory**: $(free -h | awk '/^Mem:/ {print $2}')" >> $GITHUB_STEP_SUMMARY
           echo "- **Disk Space**: $(df -h / | awk 'NR==2 {print $2}')" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **CPU Info**: Not available on this OS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Memory**: Not available on this OS" >> $GITHUB_STEP_SUMMARY
+          echo "- **Disk Space**: Not available on this OS" >> $GITHUB_STEP_SUMMARY
         fi
         
         echo "RUNNER_TYPE=${{ github.event.inputs.runner_type }}" >> $GITHUB_ENV
@@ -68,6 +73,7 @@ jobs:
     
     - name: Dependency Installation Benchmark
       run: |
+        set -e
         echo "📦 Starting dependency installation benchmark..."
         INSTALL_START=$(date +%s)
         
@@ -75,17 +81,26 @@ jobs:
         npm cache clean --force
         
         # Install dependencies with timing
-        time npm ci --verbose
+        time npm ci --verbose > install.log 2>&1
         
         INSTALL_END=$(date +%s)
         INSTALL_DURATION=$((INSTALL_END - INSTALL_START))
+        if ! [[ "$INSTALL_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: INSTALL_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "INSTALL_DURATION=${INSTALL_DURATION}" >> $GITHUB_ENV
         
         echo "✅ Dependencies installed in ${INSTALL_DURATION}s"
         
-        # Package count and size information
-        PACKAGE_COUNT=$(npm list --depth=0 2>/dev/null | grep -c "├\|└" || echo "0")
-        NODE_MODULES_SIZE=$(du -sh node_modules 2>/dev/null | cut -f1 || echo "Unknown")
+        # Package count and size information (Linux only)
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          PACKAGE_COUNT=$(npm list --depth=0 2>/dev/null | grep -c "├\|└" || echo "0")
+          NODE_MODULES_SIZE=$(du -sh node_modules 2>/dev/null | cut -f1 || echo "Unknown")
+        else
+          PACKAGE_COUNT="N/A"
+          NODE_MODULES_SIZE="N/A"
+        fi
         
         echo "📊 Installation Metrics:"
         echo "  - Duration: ${INSTALL_DURATION}s"
@@ -97,6 +112,7 @@ jobs:
     
     - name: CPU Performance Benchmark
       run: |
+        set -e
         echo "🔥 Running CPU-intensive benchmarks..."
         CPU_START=$(date +%s)
         
@@ -108,42 +124,50 @@ jobs:
         
         CPU_END=$(date +%s)
         CPU_DURATION=$((CPU_END - CPU_START))
+        if ! [[ "$CPU_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: CPU_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "CPU_DURATION=${CPU_DURATION}" >> $GITHUB_ENV
         
         echo "⚡ CPU benchmarks completed in ${CPU_DURATION}s"
     
     - name: Memory and I/O Benchmark
       run: |
+        set -e
         echo "💾 Running memory and I/O benchmarks..."
         MEMORY_START=$(date +%s)
         
         # Run memory-intensive tests
         npm test -- --testNamePattern="memory|Memory" --verbose --testTimeout=60000
         
-        # File I/O benchmark
-        echo "📁 File I/O Performance Test"
-        
-        # Create large files
-        dd if=/dev/zero of=test_file_1mb bs=1M count=1 2>/dev/null
-        dd if=/dev/zero of=test_file_10mb bs=1M count=10 2>/dev/null
-        dd if=/dev/zero of=test_file_100mb bs=1M count=100 2>/dev/null
-        
-        # Measure file operations
-        time cp test_file_100mb test_file_copy
-        time gzip test_file_copy
-        time gunzip test_file_copy.gz
-        
-        # Cleanup
-        rm -f test_file_* test_file_copy*
+        # File I/O benchmark (Linux only)
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          echo "📁 File I/O Performance Test"
+          dd if=/dev/zero of=test_file_1mb bs=1M count=1 2>/dev/null
+          dd if=/dev/zero of=test_file_10mb bs=1M count=10 2>/dev/null
+          dd if=/dev/zero of=test_file_100mb bs=1M count=100 2>/dev/null
+          time cp test_file_100mb test_file_copy
+          time gzip test_file_copy
+          time gunzip test_file_copy.gz
+          rm -f test_file_* test_file_copy*
+        else
+          echo "File I/O benchmarks are only run on Linux runners."
+        fi
         
         MEMORY_END=$(date +%s)
         MEMORY_DURATION=$((MEMORY_END - MEMORY_START))
+        if ! [[ "$MEMORY_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: MEMORY_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "MEMORY_DURATION=${MEMORY_DURATION}" >> $GITHUB_ENV
         
         echo "🧠 Memory and I/O benchmarks completed in ${MEMORY_DURATION}s"
     
     - name: Build Performance Test
       run: |
+        set -e
         echo "🏗️ Testing build performance..."
         BUILD_START=$(date +%s)
         
@@ -161,41 +185,56 @@ jobs:
         
         BUILD_END=$(date +%s)
         BUILD_DURATION=$((BUILD_END - BUILD_START))
+        if ! [[ "$BUILD_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: BUILD_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "BUILD_DURATION=${BUILD_DURATION}" >> $GITHUB_ENV
         
         echo "🔨 Build operations completed in ${BUILD_DURATION}s"
     
     - name: Network Performance Test
       run: |
+        set -e
         echo "🌐 Testing network performance..."
         NETWORK_START=$(date +%s)
         
-        # Download speed test
-        echo "⬇️ Download speed test"
-        time curl -L -o /dev/null -s https://github.com/microsoft/TypeScript/archive/refs/heads/main.zip
-        
-        # Multiple concurrent downloads
-        echo "🔄 Concurrent download test"
-        time (
-          curl -L -o /dev/null -s https://registry.npmjs.org/react/latest &
-          curl -L -o /dev/null -s https://registry.npmjs.org/vue/latest &
-          curl -L -o /dev/null -s https://registry.npmjs.org/angular/latest &
-          curl -L -o /dev/null -s https://registry.npmjs.org/express/latest &
-          curl -L -o /dev/null -s https://registry.npmjs.org/webpack/latest &
-          wait
-        )
+        # Download speed test (Linux only)
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          echo "⬇️ Download speed test"
+          time curl -L -o /dev/null -s https://github.com/microsoft/TypeScript/archive/refs/heads/main.zip
+          echo "🔄 Concurrent download test"
+          time (
+            curl -L -o /dev/null -s https://registry.npmjs.org/react/latest &
+            curl -L -o /dev/null -s https://registry.npmjs.org/vue/latest &
+            curl -L -o /dev/null -s https://registry.npmjs.org/angular/latest &
+            curl -L -o /dev/null -s https://registry.npmjs.org/express/latest &
+            curl -L -o /dev/null -s https://registry.npmjs.org/webpack/latest &
+            wait
+          )
+        else
+          echo "Network benchmarks are only run on Linux runners."
+        fi
         
         NETWORK_END=$(date +%s)
         NETWORK_DURATION=$((NETWORK_END - NETWORK_START))
+        if ! [[ "$NETWORK_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: NETWORK_DURATION is not a number!" >&2
+          exit 1
+        fi
         echo "NETWORK_DURATION=${NETWORK_DURATION}" >> $GITHUB_ENV
         
         echo "📡 Network tests completed in ${NETWORK_DURATION}s"
     
     - name: Calculate Total Performance
       run: |
+        set -e
         WORKFLOW_END_TIME=$(date +%s)
         TOTAL_DURATION=$((WORKFLOW_END_TIME - WORKFLOW_START_TIME))
-        echo "TOTAL_DURATION=${TOTAL_DURATION}" >> $GITHUB_ENV
+        if ! [[ "$TOTAL_DURATION" =~ ^[0-9]+$ ]]; then
+          echo "Error: TOTAL_DURATION is not a number!" >&2
+          exit 1
+        fi
         
         # Calculate performance score (baseline: ubuntu-latest = 100)
         BASELINE_TIME=300  # Expected time for ubuntu-latest
@@ -235,6 +274,7 @@ jobs:
     
     - name: Generate Performance Report
       run: |
+        # TODO: Integrate notification or fail workflow if needed
         # Create detailed performance report
         cat > performance-report.json << EOF
         {
@@ -328,3 +368,14 @@ jobs:
           echo "⚠️ Performance thresholds exceeded - consider investigating"
           # Don't fail the workflow, just warn
         fi
+    
+    - name: Upload logs and reports
+      uses: actions/upload-artifact@v3
+      with:
+        name: runner-comparison-logs
+        path: |
+          install.log
+          perf.log
+          build.log
+          lint.log
+        retention-days: 14

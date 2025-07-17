@@ -5,7 +5,7 @@ const {
   isPrime,
   fibonacci,
   sortArray,
-  asyncOperation
+  asyncOperation,
 } = require('./utils');
 
 describe('Basic Math Operations', () => {
@@ -83,7 +83,9 @@ describe('Performance Tests', () => {
   });
 
   test('sorting large array', () => {
-    const largeArray = Array.from({ length: 1000 }, () => Math.floor(Math.random() * 1000));
+    const largeArray = Array.from({ length: 1000 }, () =>
+      Math.floor(Math.random() * 1000)
+    );
     const sorted = sortArray(largeArray);
     expect(sorted).toHaveLength(1000);
 

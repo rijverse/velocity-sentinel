@@ -51,6 +51,23 @@ The suite combines intensive computational benchmarks with realistic dependency 
 
 ## Quick Start
 
+### Minimal Example
+
+Run a simple benchmark locally and see the output:
+
+```bash
+npm run test:performance
+```
+
+Expected output (example):
+```
+PASS  src/performance.test.js
+  Performance Benchmarks
+    ✓ benchmark factorial calculations (X ms)
+    ✓ benchmark prime checking with large dataset (Y ms)
+    ...
+```
+
 ### Basic Runner Testing
 
 ```bash
@@ -237,20 +254,45 @@ const runnerConfigs = {
 ```
 velocity-sentinel/
 ├── src/
-│   ├── benchmarks/           # Individual benchmark implementations
-│   ├── runners/             # Runner-specific configurations
-│   ├── analysis/            # Performance analysis tools
-│   └── reporting/           # Report generation utilities
+│   ├── benchmarks/           # Individual benchmark implementations (planned)
+│   ├── runners/              # Runner-specific configurations (planned)
+│   ├── analysis/             # Performance analysis tools (planned)
+│   └── reporting/            # Report generation utilities (planned)
 ├── .github/workflows/
 │   ├── runner-comparison.yml      # Single runner testing
 │   ├── comprehensive-analysis.yml # Multi-runner comparison
 │   ├── scheduled-monitoring.yml   # Automated monitoring
-│   └── cost-analysis.yml         # Cost optimization analysis
+│   └── cost-analysis.yml          # Cost optimization analysis
 ├── config/
-│   ├── runner-configs.js    # Runner specifications
-│   └── thresholds.js        # Performance thresholds
-└── reports/                 # Generated performance reports
+│   └── runner-configs.js    # Runner specifications
 ```
+
+> **Note:** Some directories (benchmarks, runners, analysis, reporting) are planned for future expansion and may not yet be implemented in the current version.
+
+## Dependency Policy
+
+This project aims to keep dependencies minimal and only include those required for benchmarking, testing, and CI/CD automation. If you add a new dependency, please ensure it is essential and document its use in the codebase or pull request.
+
+## Roadmap
+
+- [x] Core performance benchmarks (CPU, memory, async, I/O)
+- [x] GitHub Actions workflows for runner comparison
+- [ ] Modularize benchmarks into `src/benchmarks/`
+- [ ] Add runner-specific logic in `src/runners/`
+- [ ] Implement analysis and reporting modules
+- [ ] Add more real-world CI/CD scenarios
+- [ ] Community-contributed benchmarks
+
+## Contributing
+
+Contributions are welcome! To get started:
+
+1. Fork the repository and create a new branch.
+2. Add your benchmark, utility, or improvement.
+3. Add or update tests as needed.
+4. Open a pull request with a clear description of your changes.
+
+Please follow the code style and keep dependencies minimal. For major changes, open an issue first to discuss your proposal.
 
 ## Use Cases
 

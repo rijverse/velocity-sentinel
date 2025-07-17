@@ -5,6 +5,7 @@
     "test": "jest",
     "test:verbose": "jest --verbose",
     "test:coverage": "jest --coverage",
+    "test:performance": "jest --verbose",
     "build": "webpack --mode=production",
     "dev": "webpack serve --mode=development",
     "lint": "eslint src/**/*.{js,ts}",
@@ -18,9 +19,10 @@
     "name": "Rijoanul Hasan",
     "email": "rijoanul.shanto@gmail.com"
   },
+  "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/santiq/bulletproof-nodejs.git"
+    "url": "git+https://github.com/Rijoanul-Shanto/velocity-sentinel.git"
   },
   "devDependencies": {
     "jest": "^29.7.0",
@@ -91,6 +93,9 @@
     "collectCoverageFrom": [
       "src/**/*.js",
       "!src/**/*.test.js"
+    ],
+    "testMatch": [
+      "**/?(*.)+(spec|test|benchmark).[jt]s?(x)"
     ]
   }
 }
