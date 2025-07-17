@@ -1,0 +1,22 @@
+name: CI
+
+on: [push, pull_request]
+
+jobs:
+  test:
+    strategy:
+      matrix:
+        runner: [github, blacksmith]
+    runs-on: ${{ matrix.runner == 'github' && 'ubuntu-latest' || 'blacksmith-ubuntu-latest' }}
+    steps:
+      - uses: actions/checkout@v3
+      - name: Set up Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install
+      - name: Run tests
+        run: npm test
+      - name: Show runner info
+        run: echo "Running on ${{ matrix.runner }}" 
