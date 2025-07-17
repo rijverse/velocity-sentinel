@@ -1,0 +1,74 @@
+name: Performance Comparison
+
+on:
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  compare-performance:
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout PR code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Install dependencies
+      run: npm ci
+    
+    - name: Run performance tests on PR
+      run: |
+        echo "🔍 Running performance tests on PR branch..."
+        PR_START=$(date +%s)
+        npm test -- --testNamePattern="Performance Benchmarks" --verbose > pr_performance.log 2>&1
+        PR_END=$(date +%s)
+        PR_DURATION=$((PR_END - PR_START))
+        echo "PR_DURATION=${PR_DURATION}" >> $GITHUB_ENV
+        cat pr_performance.log
+    
+    - name: Checkout main branch
+      uses: actions/checkout@v4
+      with:
+        ref: main
+    
+    - name: Install dependencies on main
+      run: npm ci
+    
+    - name: Run performance tests on main
+      run: |
+        echo "🔍 Running performance tests on main branch..."
+        MAIN_START=$(date +%s)
+        npm test -- --testNamePattern="Performance Benchmarks" --verbose > main_performance.log 2>&1
+        MAIN_END=$(date +%s)
+        MAIN_DURATION=$((MAIN_END - MAIN_START))
+        echo "MAIN_DURATION=${MAIN_DURATION}" >> $GITHUB_ENV
+        cat main_performance.log
+    
+    - name: Compare results
+      run: |
+        echo "## 🔄 Performance Comparison" >> $GITHUB_STEP_SUMMARY
+        echo "| Branch | Duration | Change |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|----------|---------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Main | ${MAIN_DURATION}s | - |" >> $GITHUB_STEP_SUMMARY
+        echo "| PR | ${PR_DURATION}s | $(( PR_DURATION - MAIN_DURATION ))s |" >> $GITHUB_STEP_SUMMARY
+        
+        if [ $PR_DURATION -gt $MAIN_DURATION ]; then
+          REGRESSION=$(( PR_DURATION - MAIN_DURATION ))
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "⚠️ **Performance regression detected!**" >> $GITHUB_STEP_SUMMARY
+          echo "The PR is ${REGRESSION}s slower than main branch." >> $GITHUB_STEP_SUMMARY
+        elif [ $PR_DURATION -lt $MAIN_DURATION ]; then
+          IMPROVEMENT=$(( MAIN_DURATION - PR_DURATION ))
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "🚀 **Performance improvement detected!**" >> $GITHUB_STEP_SUMMARY
+          echo "The PR is ${IMPROVEMENT}s faster than main branch." >> $GITHUB_STEP_SUMMARY
+        else
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ **No performance change detected.**" >> $GITHUB_STEP_SUMMARY
+        fi
