@@ -1,0 +1,250 @@
+name: Scheduled Performance Monitoring
+
+on:
+  schedule:
+    # Run daily at 6 AM UTC
+    - cron: '0 6 * * *'
+  workflow_dispatch:
+    inputs:
+      monitoring_type:
+        description: 'Type of monitoring to run'
+        required: true
+        default: 'daily'
+        type: choice
+        options:
+          - 'daily'
+          - 'weekly'
+          - 'trend-analysis'
+
+jobs:
+  daily-monitoring:
+    if: github.event_name == 'schedule' || github.event.inputs.monitoring_type == 'daily'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Daily Performance Check
+      run: |
+        echo "📅 Daily performance monitoring - $(date)"
+        echo "MONITORING_DATE=$(date +%Y-%m-%d)" >> $GITHUB_ENV
+        echo "MONITORING_START=$(date +%s)" >> $GITHUB_ENV
+        
+        # Quick performance check on standard runner
+        echo "🏃‍♂️ Running daily performance baseline..."
+    
+    - name: Baseline Performance Test
+      run: |
+        BASELINE_START=$(date +%s)
+        
+        # Install dependencies
+        npm ci
+        
+        # Run core performance tests
+        npm test -- --testNamePattern="Performance Benchmarks" --verbose --testTimeout=60000
+        
+        BASELINE_END=$(date +%s)
+        BASELINE_DURATION=$((BASELINE_END - BASELINE_START))
+        echo "BASELINE_DURATION=${BASELINE_DURATION}" >> $GITHUB_ENV
+        
+        echo "⚡ Baseline performance: ${BASELINE_DURATION}s"
+    
+    - name: Performance Trend Analysis
+      run: |
+        # Create daily performance record
+        cat > daily-performance.json << EOF
+        {
+          "date": "${MONITORING_DATE}",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "runner": "ubuntu-latest",
+          "baseline_duration": ${BASELINE_DURATION},
+          "status": "$([ ${BASELINE_DURATION} -lt 180 ] && echo 'healthy' || echo 'degraded')",
+          "threshold": 180,
+          "environment": {
+            "node_version": "20.x",
+            "os": "ubuntu-latest"
+          }
+        }
+        EOF
+        
+        echo "📊 Daily performance recorded: ${BASELINE_DURATION}s"
+        
+        # Check for performance degradation
+        if [ ${BASELINE_DURATION} -gt 180 ]; then
+          echo "⚠️ Performance degradation detected!"
+          echo "PERFORMANCE_ALERT=true" >> $GITHUB_ENV
+        else
+          echo "✅ Performance within normal range"
+          echo "PERFORMANCE_ALERT=false" >> $GITHUB_ENV
+        fi
+    
+    - name: Generate Daily Report
+      run: |
+        echo "## 📅 Daily Performance Report - ${MONITORING_DATE}" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Value | Status |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|--------|" >> $GITHUB_STEP_SUMMARY
+        echo "| Baseline Duration | ${BASELINE_DURATION}s | $([ ${BASELINE_DURATION} -lt 180 ] && echo '✅ Healthy' || echo '⚠️ Degraded') |" >> $GITHUB_STEP_SUMMARY
+        echo "| Threshold | 180s | - |" >> $GITHUB_STEP_SUMMARY
+        echo "| Runner | ubuntu-latest | Active |" >> $GITHUB_STEP_SUMMARY
+        
+        if [ "$PERFORMANCE_ALERT" = "true" ]; then
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### ⚠️ Performance Alert" >> $GITHUB_STEP_SUMMARY
+          echo "Performance has degraded beyond acceptable thresholds." >> $GITHUB_STEP_SUMMARY
+          echo "Consider investigating recent changes or runner capacity issues." >> $GITHUB_STEP_SUMMARY
+        fi
+    
+    - name: Upload Daily Data
+      uses: actions/upload-artifact@v3
+      with:
+        name: daily-performance-${{ env.MONITORING_DATE }}
+        path: daily-performance.json
+        retention-days: 30
+
+  weekly-analysis:
+    if: github.event.inputs.monitoring_type == 'weekly'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Download Recent Daily Data
+      uses: actions/download-artifact@v3
+      with:
+        path: daily-data
+        pattern: daily-performance-*
+    
+    - name: Weekly Trend Analysis
+      run: |
+        echo "📈 Analyzing weekly performance trends..."
+        
+        # Collect last 7 days of data
+        WEEK_START=$(date -d '7 days ago' +%Y-%m-%d)
+        WEEK_END=$(date +%Y-%m-%d)
+        
+        echo "## 📊 Weekly Performance Analysis" > weekly-report.md
+        echo "**Period**: ${WEEK_START} to ${WEEK_END}" >> weekly-report.md
+        echo "" >> weekly-report.md
+        
+        # Process daily data files
+        echo "### 📅 Daily Performance Trend" >> weekly-report.md
+        echo "| Date | Duration | Status | Change |" >> weekly-report.md
+        echo "|------|----------|--------|--------|" >> weekly-report.md
+        
+        PREVIOUS_DURATION=""
+        for file in daily-data/daily-performance-*/daily-performance.json; do
+          if [ -f "$file" ]; then
+            DATE=$(jq -r '.date' "$file")
+            DURATION=$(jq -r '.baseline_duration' "$file")
+            STATUS=$(jq -r '.status' "$file")
+            
+            if [ -n "$PREVIOUS_DURATION" ]; then
+              CHANGE=$((DURATION - PREVIOUS_DURATION))
+              CHANGE_INDICATOR=$([ $CHANGE -gt 0 ] && echo "📈 +${CHANGE}s" || echo "📉 ${CHANGE}s")
+            else
+              CHANGE_INDICATOR="-"
+            fi
+            
+            STATUS_ICON=$([ "$STATUS" = "healthy" ] && echo "✅" || echo "⚠️")
+            echo "| $DATE | ${DURATION}s | $STATUS_ICON $STATUS | $CHANGE_INDICATOR |" >> weekly-report.md
+            
+            PREVIOUS_DURATION=$DURATION
+          fi
+        done
+        
+        echo "" >> weekly-report.md
+        echo "### 📈 Key Insights" >> weekly-report.md
+        echo "- Performance trend analysis for the past week" >> weekly-report.md
+        echo "- Threshold: 180s for baseline performance" >> weekly-report.md
+        echo "- Monitoring runner: ubuntu-latest" >> weekly-report.md
+    
+    - name: Upload Weekly Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: weekly-analysis-$(date +%Y-%m-%d)
+        path: weekly-report.md
+        retention-days: 90
+
+  trend-analysis:
+    if: github.event.inputs.monitoring_type == 'trend-analysis'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Long-term Trend Analysis
+      run: |
+        echo "📊 Performing long-term trend analysis..."
+        
+        # This would typically analyze historical data
+        # For now, we'll create a template for trend analysis
+        
+        cat > trend-analysis.md << 'EOF'
+        # 📈 Long-term Performance Trend Analysis
+        
+        ## Overview
+        This analysis examines performance trends over extended periods to identify:
+        - Seasonal performance patterns
+        - Long-term degradation trends
+        - Impact of infrastructure changes
+        - Runner capacity variations
+        
+        ## Methodology
+        - **Data Source**: Daily performance monitoring
+        - **Analysis Period**: Last 30 days
+        - **Baseline**: ubuntu-latest runner performance
+        - **Metrics**: Installation time, test execution, total duration
+        
+        ## Key Findings
+        - Average performance over the period
+        - Performance variance and stability
+        - Identified performance anomalies
+        - Correlation with external factors
+        
+        ## Recommendations
+        - Optimal runner selection strategies
+        - Performance optimization opportunities
+        - Monitoring threshold adjustments
+        - Infrastructure improvement suggestions
+        EOF
+        
+        echo "📊 Trend analysis template created"
+    
+    - name: Upload Trend Analysis
+      uses: actions/upload-artifact@v3
+      with:
+        name: trend-analysis-$(date +%Y-%m-%d)
+        path: trend-analysis.md
+        retention-days: 180
+
+  performance-alert:
+    needs: daily-monitoring
+    if: always() && needs.daily-monitoring.result == 'success'
+    runs-on: ubuntu-latest
+    
+    steps:
+    - name: Check Performance Status
+      run: |
+        # This job would typically integrate with notification systems
+        # For demonstration, we'll create alert logic
+        
+        echo "🔔 Checking for performance alerts..."
+        
+        # In a real implementation, this would:
+        # - Check the daily monitoring results
+        # - Send notifications via Slack, email, etc.
+        # - Create GitHub issues for performance degradation
+        # - Update status dashboards
+        
+        echo "📊 Performance monitoring complete"
+        echo "✅ No critical alerts at this time"

@@ -1,0 +1,420 @@
+name: Comprehensive Runner Analysis
+
+on:
+  workflow_dispatch:
+    inputs:
+      include_large_runners:
+        description: 'Include GitHub large runners'
+        required: false
+        default: true
+        type: boolean
+      include_windows_macos:
+        description: 'Include Windows and macOS runners'
+        required: false
+        default: false
+        type: boolean
+  schedule:
+    # Run weekly on Sundays at 2 AM UTC
+    - cron: '0 2 * * 0'
+
+jobs:
+  runner-matrix-analysis:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          # Standard GitHub runners
+          - runner: ubuntu-latest
+            runner_name: "GitHub Standard"
+            cost_per_minute: 0.008
+            expected_performance: 100
+          
+          # Large GitHub runners (if enabled)
+          - runner: ubuntu-latest-4-cores
+            runner_name: "GitHub 4-Core"
+            cost_per_minute: 0.016
+            expected_performance: 140
+            condition: ${{ github.event.inputs.include_large_runners == 'true' || github.event_name == 'schedule' }}
+          
+          - runner: ubuntu-latest-8-cores
+            runner_name: "GitHub 8-Core"
+            cost_per_minute: 0.032
+            expected_performance: 180
+            condition: ${{ github.event.inputs.include_large_runners == 'true' || github.event_name == 'schedule' }}
+          
+          - runner: ubuntu-latest-16-cores
+            runner_name: "GitHub 16-Core"
+            cost_per_minute: 0.064
+            expected_performance: 220
+            condition: ${{ github.event.inputs.include_large_runners == 'true' || github.event_name == 'schedule' }}
+          
+          # Windows and macOS (if enabled)
+          - runner: windows-latest
+            runner_name: "GitHub Windows"
+            cost_per_minute: 0.016
+            expected_performance: 85
+            condition: ${{ github.event.inputs.include_windows_macos == 'true' || github.event_name == 'schedule' }}
+          
+          - runner: macos-latest
+            runner_name: "GitHub macOS"
+            cost_per_minute: 0.08
+            expected_performance: 120
+            condition: ${{ github.event.inputs.include_windows_macos == 'true' || github.event_name == 'schedule' }}
+    
+    runs-on: ${{ matrix.runner }}
+    if: ${{ !matrix.condition || matrix.condition }}
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Setup Node.js
+      uses: actions/setup-node@v4
+      with:
+        node-version: '20.x'
+        cache: 'npm'
+    
+    - name: Runner Analysis
+      id: analysis
+      run: |
+        echo "🏃‍♂️ Analyzing: ${{ matrix.runner_name }}"
+        echo "💰 Cost per minute: ${{ matrix.cost_per_minute }}"
+        echo "📊 Expected performance: ${{ matrix.expected_performance }}"
+        
+        ANALYSIS_START=$(date +%s)
+        
+        # System information collection
+        echo "## 🖥️ System Analysis" >> analysis.md
+        echo "- **Runner**: ${{ matrix.runner_name }}" >> analysis.md
+        echo "- **Type**: ${{ matrix.runner }}" >> analysis.md
+        echo "- **OS**: ${{ runner.os }}" >> analysis.md
+        echo "- **Architecture**: ${{ runner.arch }}" >> analysis.md
+        
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          CPU_COUNT=$(nproc)
+          MEMORY_GB=$(free -g | awk '/^Mem:/ {print $2}')
+          DISK_GB=$(df -BG / | awk 'NR==2 {print $2}' | sed 's/G//')
+          
+          echo "- **CPU Cores**: ${CPU_COUNT}" >> analysis.md
+          echo "- **Memory**: ${MEMORY_GB}GB" >> analysis.md
+          echo "- **Disk Space**: ${DISK_GB}GB" >> analysis.md
+          
+          echo "CPU_COUNT=${CPU_COUNT}" >> $GITHUB_ENV
+          echo "MEMORY_GB=${MEMORY_GB}" >> $GITHUB_ENV
+        elif [ "${{ runner.os }}" = "Darwin" ]; then
+          CPU_COUNT=$(sysctl -n hw.ncpu)
+          MEMORY_GB=$(echo "$(sysctl -n hw.memsize) / 1024 / 1024 / 1024" | bc)
+          
+          echo "- **CPU Cores**: ${CPU_COUNT}" >> analysis.md
+          echo "- **Memory**: ${MEMORY_GB}GB" >> analysis.md
+          
+          echo "CPU_COUNT=${CPU_COUNT}" >> $GITHUB_ENV
+          echo "MEMORY_GB=${MEMORY_GB}" >> $GITHUB_ENV
+        elif [ "${{ runner.os }}" = "Windows" ]; then
+          # Windows system info would go here
+          echo "- **System**: Windows Runner" >> analysis.md
+        fi
+        
+        echo "ANALYSIS_START=${ANALYSIS_START}" >> $GITHUB_ENV
+    
+    - name: Dependency Installation Analysis
+      run: |
+        echo "📦 Dependency installation analysis..."
+        INSTALL_START=$(date +%s)
+        
+        # Clear cache for clean measurement
+        npm cache clean --force
+        
+        # Measure installation with detailed timing
+        time npm ci --verbose > install.log 2>&1
+        
+        INSTALL_END=$(date +%s)
+        INSTALL_DURATION=$((INSTALL_END - INSTALL_START))
+        
+        # Analyze installation log
+        PACKAGE_COUNT=$(npm list --depth=0 2>/dev/null | grep -c "├\|└" || echo "0")
+        NODE_MODULES_SIZE=$(du -sh node_modules 2>/dev/null | cut -f1 || echo "Unknown")
+        
+        echo "INSTALL_DURATION=${INSTALL_DURATION}" >> $GITHUB_ENV
+        echo "PACKAGE_COUNT=${PACKAGE_COUNT}" >> $GITHUB_ENV
+        echo "NODE_MODULES_SIZE=${NODE_MODULES_SIZE}" >> $GITHUB_ENV
+        
+        echo "## 📦 Installation Analysis" >> analysis.md
+        echo "- **Duration**: ${INSTALL_DURATION}s" >> analysis.md
+        echo "- **Packages**: ${PACKAGE_COUNT}" >> analysis.md
+        echo "- **Size**: ${NODE_MODULES_SIZE}" >> analysis.md
+    
+    - name: Performance Benchmark Execution
+      run: |
+        echo "⚡ Running performance benchmarks..."
+        PERF_START=$(date +%s)
+        
+        # Run comprehensive benchmarks
+        npm test -- --testNamePattern="Performance Benchmarks" --verbose --testTimeout=120000 > perf.log 2>&1
+        
+        PERF_END=$(date +%s)
+        PERF_DURATION=$((PERF_END - PERF_START))
+        
+        echo "PERF_DURATION=${PERF_DURATION}" >> $GITHUB_ENV
+        
+        # Extract benchmark results from log
+        echo "## ⚡ Performance Results" >> analysis.md
+        echo "- **Total Duration**: ${PERF_DURATION}s" >> analysis.md
+        
+        # Parse individual benchmark times from log
+        if grep -q "benchmark took" perf.log; then
+          echo "### Individual Benchmarks" >> analysis.md
+          grep "benchmark took" perf.log | while read line; do
+            echo "- $line" >> analysis.md
+          done
+        fi
+    
+    - name: Build Performance Analysis
+      run: |
+        echo "🏗️ Build performance analysis..."
+        BUILD_START=$(date +%s)
+        
+        # TypeScript compilation
+        TS_START=$(date +%s)
+        npx tsc --noEmit
+        TS_END=$(date +%s)
+        TS_DURATION=$((TS_END - TS_START))
+        
+        # Webpack build
+        WEBPACK_START=$(date +%s)
+        npm run build > build.log 2>&1
+        WEBPACK_END=$(date +%s)
+        WEBPACK_DURATION=$((WEBPACK_END - WEBPACK_START))
+        
+        # Linting
+        LINT_START=$(date +%s)
+        npm run lint > lint.log 2>&1 || true  # Don't fail on lint errors
+        LINT_END=$(date +%s)
+        LINT_DURATION=$((LINT_END - LINT_START))
+        
+        BUILD_END=$(date +%s)
+        BUILD_TOTAL=$((BUILD_END - BUILD_START))
+        
+        echo "TS_DURATION=${TS_DURATION}" >> $GITHUB_ENV
+        echo "WEBPACK_DURATION=${WEBPACK_DURATION}" >> $GITHUB_ENV
+        echo "LINT_DURATION=${LINT_DURATION}" >> $GITHUB_ENV
+        echo "BUILD_TOTAL=${BUILD_TOTAL}" >> $GITHUB_ENV
+        
+        echo "## 🏗️ Build Analysis" >> analysis.md
+        echo "- **TypeScript**: ${TS_DURATION}s" >> analysis.md
+        echo "- **Webpack**: ${WEBPACK_DURATION}s" >> analysis.md
+        echo "- **Linting**: ${LINT_DURATION}s" >> analysis.md
+        echo "- **Total Build**: ${BUILD_TOTAL}s" >> analysis.md
+    
+    - name: Calculate Performance Metrics
+      run: |
+        ANALYSIS_END=$(date +%s)
+        TOTAL_DURATION=$((ANALYSIS_END - ANALYSIS_START))
+        
+        # Calculate performance score (baseline: ubuntu-latest = 100)
+        BASELINE_TIME=300
+        PERFORMANCE_SCORE=$((BASELINE_TIME * 100 / TOTAL_DURATION))
+        
+        # Calculate cost efficiency
+        COST_TOTAL=$(echo "${{ matrix.cost_per_minute }} * ${TOTAL_DURATION} / 60" | bc -l)
+        COST_EFFICIENCY=$(echo "scale=2; ${PERFORMANCE_SCORE} / ${COST_TOTAL}" | bc -l)
+        
+        echo "TOTAL_DURATION=${TOTAL_DURATION}" >> $GITHUB_ENV
+        echo "PERFORMANCE_SCORE=${PERFORMANCE_SCORE}" >> $GITHUB_ENV
+        echo "COST_TOTAL=${COST_TOTAL}" >> $GITHUB_ENV
+        echo "COST_EFFICIENCY=${COST_EFFICIENCY}" >> $GITHUB_ENV
+        
+        echo "## 📊 Final Metrics" >> analysis.md
+        echo "- **Total Duration**: ${TOTAL_DURATION}s" >> analysis.md
+        echo "- **Performance Score**: ${PERFORMANCE_SCORE}" >> analysis.md
+        echo "- **Total Cost**: \$${COST_TOTAL}" >> analysis.md
+        echo "- **Cost Efficiency**: ${COST_EFFICIENCY}" >> analysis.md
+        
+        # Performance rating
+        if [ $PERFORMANCE_SCORE -gt 150 ]; then
+          RATING="🚀 Excellent"
+        elif [ $PERFORMANCE_SCORE -gt 120 ]; then
+          RATING="⚡ Very Good"
+        elif [ $PERFORMANCE_SCORE -gt 100 ]; then
+          RATING="✅ Good"
+        elif [ $PERFORMANCE_SCORE -gt 80 ]; then
+          RATING="⚠️ Average"
+        else
+          RATING="🐌 Below Average"
+        fi
+        
+        echo "- **Rating**: ${RATING}" >> analysis.md
+        echo "RATING=${RATING}" >> $GITHUB_ENV
+    
+    - name: Generate Detailed Report
+      run: |
+        # Create JSON report for aggregation
+        cat > runner-report.json << EOF
+        {
+          "runner": "${{ matrix.runner }}",
+          "runner_name": "${{ matrix.runner_name }}",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "system": {
+            "os": "${{ runner.os }}",
+            "arch": "${{ runner.arch }}",
+            "cpu_count": "${CPU_COUNT:-unknown}",
+            "memory_gb": "${MEMORY_GB:-unknown}"
+          },
+          "performance": {
+            "install_duration": ${INSTALL_DURATION},
+            "perf_duration": ${PERF_DURATION},
+            "build_total": ${BUILD_TOTAL},
+            "total_duration": ${TOTAL_DURATION},
+            "performance_score": ${PERFORMANCE_SCORE}
+          },
+          "cost": {
+            "cost_per_minute": ${{ matrix.cost_per_minute }},
+            "total_cost": ${COST_TOTAL},
+            "cost_efficiency": ${COST_EFFICIENCY}
+          },
+          "rating": "${RATING}",
+          "details": {
+            "package_count": ${PACKAGE_COUNT},
+            "node_modules_size": "${NODE_MODULES_SIZE}",
+            "ts_duration": ${TS_DURATION},
+            "webpack_duration": ${WEBPACK_DURATION},
+            "lint_duration": ${LINT_DURATION}
+          }
+        }
+        EOF
+        
+        echo "📄 Generated detailed report for ${{ matrix.runner_name }}"
+    
+    - name: Upload Analysis Results
+      uses: actions/upload-artifact@v3
+      with:
+        name: analysis-${{ matrix.runner }}
+        path: |
+          runner-report.json
+          analysis.md
+          *.log
+        retention-days: 30
+
+  aggregate-results:
+    needs: runner-matrix-analysis
+    runs-on: ubuntu-latest
+    if: always()
+    
+    steps:
+    - name: Download all analysis results
+      uses: actions/download-artifact@v3
+      with:
+        path: analysis-results
+    
+    - name: Aggregate Performance Data
+      run: |
+        echo "📊 Aggregating performance data from all runners..."
+        
+        # Create summary report
+        echo "# 🏃‍♂️ Comprehensive Runner Analysis Report" > summary.md
+        echo "" >> summary.md
+        echo "Generated on: $(date -u)" >> summary.md
+        echo "" >> summary.md
+        
+        echo "## 📈 Performance Comparison" >> summary.md
+        echo "| Runner | Duration | Score | Cost | Efficiency | Rating |" >> summary.md
+        echo "|--------|----------|-------|------|------------|--------|" >> summary.md
+        
+        # Process each runner report
+        for dir in analysis-results/analysis-*; do
+          if [ -f "$dir/runner-report.json" ]; then
+            RUNNER_NAME=$(jq -r '.runner_name' "$dir/runner-report.json")
+            DURATION=$(jq -r '.performance.total_duration' "$dir/runner-report.json")
+            SCORE=$(jq -r '.performance.performance_score' "$dir/runner-report.json")
+            COST=$(jq -r '.cost.total_cost' "$dir/runner-report.json")
+            EFFICIENCY=$(jq -r '.cost.cost_efficiency' "$dir/runner-report.json")
+            RATING=$(jq -r '.rating' "$dir/runner-report.json")
+            
+            echo "| $RUNNER_NAME | ${DURATION}s | $SCORE | \$${COST} | $EFFICIENCY | $RATING |" >> summary.md
+          fi
+        done
+        
+        echo "" >> summary.md
+        echo "## 🎯 Recommendations" >> summary.md
+        echo "" >> summary.md
+        
+        # Find best performers
+        echo "### 🏆 Top Performers" >> summary.md
+        echo "- **Best Performance**: Runner with highest performance score" >> summary.md
+        echo "- **Best Value**: Runner with highest cost efficiency" >> summary.md
+        echo "- **Most Economical**: Runner with lowest total cost" >> summary.md
+        
+        echo "" >> summary.md
+        echo "### 💡 Usage Recommendations" >> summary.md
+        echo "- **For Speed**: Use runners with performance score > 150" >> summary.md
+        echo "- **For Cost**: Use runners with cost efficiency > 50" >> summary.md
+        echo "- **For Balance**: Consider runners rated 'Very Good' or better" >> summary.md
+    
+    - name: Create Performance Dashboard
+      run: |
+        # Create a simple HTML dashboard
+        cat > dashboard.html << 'EOF'
+        <!DOCTYPE html>
+        <html>
+        <head>
+            <title>Runner Performance Dashboard</title>
+            <style>
+                body { font-family: Arial, sans-serif; margin: 20px; }
+                table { border-collapse: collapse; width: 100%; }
+                th, td { border: 1px solid #ddd; padding: 8px; text-align: left; }
+                th { background-color: #f2f2f2; }
+                .excellent { background-color: #d4edda; }
+                .good { background-color: #fff3cd; }
+                .average { background-color: #f8d7da; }
+            </style>
+        </head>
+        <body>
+            <h1>🏃‍♂️ GitHub Runner Performance Analysis</h1>
+            <p>Last updated: <span id="timestamp"></span></p>
+            
+            <h2>📊 Performance Summary</h2>
+            <div id="summary-table"></div>
+            
+            <h2>📈 Key Insights</h2>
+            <ul>
+                <li>Performance scores are relative to GitHub standard runners (baseline: 100)</li>
+                <li>Cost efficiency = Performance Score / Total Cost</li>
+                <li>Higher scores indicate better performance</li>
+            </ul>
+            
+            <script>
+                document.getElementById('timestamp').textContent = new Date().toUTCString();
+                // Additional JavaScript for interactive features could go here
+            </script>
+        </body>
+        </html>
+        EOF
+        
+        echo "📊 Created performance dashboard"
+    
+    - name: Upload Aggregated Results
+      uses: actions/upload-artifact@v3
+      with:
+        name: comprehensive-analysis-report
+        path: |
+          summary.md
+          dashboard.html
+        retention-days: 90
+    
+    - name: Update Summary
+      run: |
+        echo "## 🏃‍♂️ Comprehensive Runner Analysis Complete" >> $GITHUB_STEP_SUMMARY
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📊 Analysis Coverage" >> $GITHUB_STEP_SUMMARY
+        
+        RUNNER_COUNT=$(ls -1 analysis-results/ | grep "analysis-" | wc -l)
+        echo "- **Runners Tested**: $RUNNER_COUNT" >> $GITHUB_STEP_SUMMARY
+        echo "- **Report Generated**: $(date -u)" >> $GITHUB_STEP_SUMMARY
+        echo "- **Artifacts**: Available for 90 days" >> $GITHUB_STEP_SUMMARY
+        
+        echo "" >> $GITHUB_STEP_SUMMARY
+        echo "### 📁 Available Reports" >> $GITHUB_STEP_SUMMARY
+        echo "- Individual runner analysis reports" >> $GITHUB_STEP_SUMMARY
+        echo "- Comprehensive summary report" >> $GITHUB_STEP_SUMMARY
+        echo "- Performance dashboard (HTML)" >> $GITHUB_STEP_SUMMARY
+        echo "- Raw performance logs and data" >> $GITHUB_STEP_SUMMARY

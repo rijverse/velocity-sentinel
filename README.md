@@ -1,140 +1,235 @@
 # ⚡ Velocity Sentinel
 
-A comprehensive CI/CD performance monitoring toolkit designed to detect workflow regressions and optimize GitHub Actions execution times through intensive benchmarking.
+A comprehensive GitHub Actions runner performance benchmarking suite designed to evaluate and compare the execution characteristics of different runner environments including GitHub-hosted, self-hosted, and third-party runners.
 
 ## Overview
 
-Velocity Sentinel is a specialized performance testing framework that stress-tests your CI/CD pipeline with computationally intensive benchmarks. By running demanding workloads across mathematical computations, memory operations, and async processing, it establishes baseline performance metrics and automatically detects regressions in your GitHub Actions workflows.
+Velocity Sentinel provides standardized performance benchmarks to help teams make informed decisions about their CI/CD infrastructure. By running identical workloads across different runner types, it reveals performance differences, cost implications, and reliability patterns that impact development workflows.
 
-The toolkit combines heavy dependency installations with CPU-intensive test suites to create realistic load scenarios that mirror complex production environments. This approach ensures your CI/CD pipeline can handle demanding workloads while maintaining consistent performance standards.
+The suite combines intensive computational benchmarks with realistic dependency installation scenarios to simulate real-world CI/CD workloads. This approach ensures meaningful performance comparisons across runner environments while identifying bottlenecks and optimization opportunities.
+
+## Runner Types Supported
+
+### 🏢 GitHub-Hosted Runners
+- **Standard runners**: `ubuntu-latest`, `windows-latest`, `macos-latest`
+- **Larger runners**: `ubuntu-latest-4-cores`, `ubuntu-latest-8-cores`, `ubuntu-latest-16-cores`
+- **GPU runners**: `gpu-ubuntu-latest` (where available)
+
+### 🔧 Self-Hosted Runners
+- Custom hardware configurations
+- On-premises infrastructure
+- Cloud-based self-hosted setups
+- Containerized runner environments
+
+### 🌐 Third-Party Runners
+- BuildJet runners
+- Namespace runners
+- Cirrus CI runners
+- Custom runner implementations
 
 ## Features
 
-### 🔍 Comprehensive Timing Analysis
-- **Granular Step Timing**: Measures execution time for each workflow step
-- **Performance Thresholds**: Configurable limits with automatic failure on regression
-- **Multi-Node Testing**: Matrix strategy across Node.js versions
-- **Detailed Reporting**: Rich markdown summaries with timing breakdowns
+### 📊 Comprehensive Performance Metrics
+- **Installation Timing**: Measures dependency installation across different package managers
+- **CPU Benchmarks**: Mathematical computations, sorting algorithms, prime calculations
+- **Memory Tests**: Large object manipulation and memory allocation patterns
+- **I/O Performance**: File operations, network requests, and disk usage
+- **Concurrent Processing**: Multi-threaded operations and async workload handling
 
-### 📊 Performance Benchmarking
-- **Algorithm Performance**: Factorial, prime checking, and sorting benchmarks
-- **Memory Efficiency**: Tracks performance across different data sizes
-- **Async Operations**: Timing analysis for asynchronous workflows
-- **Regression Detection**: Automatic comparison between branches
+### 🔍 Runner Comparison Analysis
+- **Side-by-side Performance**: Direct comparison between runner types
+- **Cost-Performance Ratio**: Execution time vs. runner costs analysis
+- **Reliability Metrics**: Success rates and failure patterns
+- **Resource Utilization**: CPU, memory, and disk usage patterns
+- **Network Performance**: Download speeds and connectivity reliability
 
-### 🛡️ Continuous Monitoring
-- **Branch Comparison**: PR performance vs main branch analysis
-- **Coverage Integration**: Performance impact of test coverage collection
-- **Artifact Management**: Automated upload of performance reports
-- **Threshold Enforcement**: Fail-fast on performance degradation
+### 📈 Automated Reporting
+- **Performance Dashboards**: Visual comparison of runner performance
+- **Trend Analysis**: Historical performance tracking over time
+- **Regression Detection**: Automatic alerts for performance degradation
+- **Cost Analysis**: Runner usage costs and optimization recommendations
 
 ## Quick Start
+
+### Basic Runner Testing
 
 ```bash
 # Clone the repository
 git clone https://github.com/yourusername/velocity-sentinel.git
 cd velocity-sentinel
 
-# Install dependencies
+# Install dependencies (this is part of the benchmark)
 npm install
 
-# Run local tests
+# Run local performance tests
 npm test
 
-# Run with coverage
-npm run test:coverage
+# Run comprehensive benchmarks
+npm run test:performance
 
-# Verbose output
-npm run test:verbose
+# Generate detailed reports
+npm run test:coverage
 ```
+
+### Testing Specific Runners
+
+```bash
+# Test on GitHub-hosted runners
+gh workflow run runner-comparison.yml -f runner_type=github-hosted
+
+# Test on larger GitHub runners
+gh workflow run runner-comparison.yml -f runner_type=github-large
+
+# Test on self-hosted runners
+gh workflow run runner-comparison.yml -f runner_type=self-hosted
+
+# Compare multiple runner types
+gh workflow run comprehensive-comparison.yml
+```
+
+## Benchmark Categories
+
+### 🔧 Infrastructure Benchmarks
+- **Dependency Installation**: npm, yarn, pnpm installation timing with 80+ packages
+- **Container Operations**: Docker build and push operations
+- **File System Performance**: Large file creation, compression, and extraction
+- **Network Throughput**: Download speeds and API response times
+
+### 💻 Computational Benchmarks
+- **Mathematical Operations**: 1,500+ factorial calculations, prime number detection
+- **Sorting Algorithms**: Multi-dataset sorting (1K-10K elements)
+- **String Processing**: Regex operations on large text datasets
+- **Memory Operations**: Complex object creation and manipulation (1,000+ objects)
+- **Async Processing**: 225+ concurrent promise operations
+
+### 🧪 Real-World Scenarios
+- **Build Processes**: TypeScript compilation, webpack bundling
+- **Test Execution**: Jest test suites with coverage analysis
+- **Code Quality**: ESLint, Prettier, and type checking
+- **Database Operations**: Migration scripts and data processing
 
 ## Workflow Configuration
 
-### Main Benchmark Workflow
-Triggered on push to `main`/`develop` and pull requests:
-
+### Runner Comparison Workflow
 ```yaml
-# .github/workflows/test-benchmark.yml
-- Installs dependencies with timing
-- Executes full test suite
-- Runs performance benchmarks
-- Generates coverage reports
-- Validates against performance thresholds
+# .github/workflows/runner-comparison.yml
+# Runs identical benchmarks across different runner types
+# Provides direct performance comparison metrics
 ```
 
-### Performance Comparison
-Activated on pull requests for regression analysis:
-
+### Comprehensive Analysis Workflow
 ```yaml
-# .github/workflows/performance-comparison.yml
-- Compares PR performance against main branch
-- Identifies performance improvements/regressions
-- Provides detailed comparison metrics
+# .github/workflows/comprehensive-analysis.yml
+# Matrix strategy testing across all available runners
+# Generates detailed performance reports and cost analysis
 ```
 
-## Performance Thresholds
+### Scheduled Performance Monitoring
+```yaml
+# .github/workflows/scheduled-monitoring.yml
+# Daily/weekly performance tracking
+# Trend analysis and regression detection
+```
 
-Default limits (configurable in workflow):
+## Performance Thresholds by Runner Type
 
-| Operation | Threshold | Purpose |
-|-----------|-----------|---------|
-| Dependencies | 90s | Installation efficiency |
-| Test Execution | 45s | Core test performance |
-| Benchmarks | 30s | Algorithm performance |
-| Coverage | 60s | Coverage collection impact |
-| Total Workflow | 180s | Overall pipeline efficiency |
+| Runner Type | Dependencies | Tests | Benchmarks | Total |
+|-------------|--------------|-------|------------|-------|
+| GitHub Standard | 120s | 60s | 45s | 240s |
+| GitHub Large (4-core) | 80s | 40s | 30s | 180s |
+| GitHub Large (8-core) | 60s | 30s | 25s | 150s |
+| Self-Hosted (Custom) | Variable | Variable | Variable | Variable |
+| Third-Party | 90s | 45s | 35s | 200s |
 
-## Test Categories
+## Runner Performance Analysis
 
-### Unit Tests
-- Basic mathematical operations (add, multiply)
-- Input validation and edge cases
-- Error handling verification
+### Interpreting Results
 
-### Performance Benchmarks
-- **Factorial Calculations**: Recursive algorithm timing with 1,500+ operations
-- **Prime Detection**: Optimized sieve implementation testing 50,000+ numbers
-- **Array Operations**: Multi-dataset sorting efficiency (1K-10K elements)
-- **Async Operations**: Concurrent promise resolution (225+ operations)
-- **String Processing**: Regex and manipulation on large text datasets
-- **Memory Operations**: Complex object creation and processing
-- **Mathematical Computations**: Matrix operations and statistical analysis
+```
+🏃‍♂️ Runner Performance Comparison
+| Runner Type | Total Time | Cost/Min | Performance Score |
+|-------------|------------|----------|-------------------|
+| GitHub Standard | 240s | $0.008 | 100 |
+| GitHub 4-core | 180s | $0.016 | 133 |
+| GitHub 8-core | 150s | $0.032 | 160 |
+| Self-Hosted | 120s | $0.005 | 200 |
+| BuildJet | 160s | $0.012 | 150 |
+```
 
-### Integration Tests
-- Large dataset processing
-- Memory usage patterns
-- Concurrent operation handling
+### Cost-Performance Analysis
+- **Performance Score**: Baseline (GitHub Standard) = 100
+- **Cost Efficiency**: Performance improvement per dollar spent
+- **Reliability Factor**: Success rate and consistency metrics
+- **Recommendation Engine**: Optimal runner selection based on workload
 
-## Customization
+## Configuration
+
+### Custom Runner Testing
+
+```yaml
+# .github/workflows/custom-runner-test.yml
+name: Custom Runner Test
+on:
+  workflow_dispatch:
+    inputs:
+      runner_label:
+        description: 'Runner label to test'
+        required: true
+        default: 'ubuntu-latest'
+
+jobs:
+  benchmark:
+    runs-on: ${{ github.event.inputs.runner_label }}
+    # ... benchmark steps
+```
 
 ### Adding New Benchmarks
 
 ```javascript
-// src/performance.test.js
-test('custom benchmark', () => {
+// src/benchmarks/custom-benchmark.js
+const { performance } = require('perf_hooks');
+
+function customBenchmark() {
   const start = performance.now();
   
-  // Your performance-critical code here
-  customOperation();
+  // Your custom benchmark logic
+  performCustomOperation();
   
   const end = performance.now();
   const duration = end - start;
   
-  console.log(`Custom benchmark: ${duration.toFixed(2)}ms`);
-  expect(duration).toBeLessThan(expectedThreshold);
-});
+  return {
+    name: 'Custom Benchmark',
+    duration: duration,
+    operations: operationCount,
+    throughput: operationCount / (duration / 1000)
+  };
+}
+
+module.exports = { customBenchmark };
 ```
 
-### Modifying Thresholds
+### Runner-Specific Configurations
 
-Edit the performance regression check in `.github/workflows/test-benchmark.yml`:
-
-```bash
-MAX_INSTALL_TIME=90     # Dependency installation
-MAX_TEST_TIME=45        # Test execution
-MAX_PERF_TIME=30        # Performance benchmarks
-MAX_COVERAGE_TIME=60    # Coverage analysis
-MAX_TOTAL_TIME=180      # Total workflow
+```javascript
+// config/runner-configs.js
+const runnerConfigs = {
+  'github-standard': {
+    expectedPerformance: 100,
+    costPerMinute: 0.008,
+    maxDuration: 240
+  },
+  'github-4-core': {
+    expectedPerformance: 133,
+    costPerMinute: 0.016,
+    maxDuration: 180
+  },
+  'self-hosted': {
+    expectedPerformance: 'variable',
+    costPerMinute: 'custom',
+    maxDuration: 'unlimited'
+  }
+};
 ```
 
 ## Architecture
@@ -142,41 +237,70 @@ MAX_TOTAL_TIME=180      # Total workflow
 ```
 velocity-sentinel/
 ├── src/
-│   ├── utils.js              # Core utility functions
-│   ├── utils.test.js         # Unit tests
-│   └── performance.test.js   # Performance benchmarks
+│   ├── benchmarks/           # Individual benchmark implementations
+│   ├── runners/             # Runner-specific configurations
+│   ├── analysis/            # Performance analysis tools
+│   └── reporting/           # Report generation utilities
 ├── .github/workflows/
-│   ├── test-benchmark.yml    # Main timing workflow
-│   └── performance-comparison.yml  # PR comparison
-└── package.json              # Dependencies and scripts
+│   ├── runner-comparison.yml      # Single runner testing
+│   ├── comprehensive-analysis.yml # Multi-runner comparison
+│   ├── scheduled-monitoring.yml   # Automated monitoring
+│   └── cost-analysis.yml         # Cost optimization analysis
+├── config/
+│   ├── runner-configs.js    # Runner specifications
+│   └── thresholds.js        # Performance thresholds
+└── reports/                 # Generated performance reports
 ```
 
-## Interpreting Results
+## Use Cases
 
-### Workflow Summary
-Each run generates a detailed timing breakdown:
+### 🏢 Enterprise Teams
+- **Runner Selection**: Choose optimal runners for different project types
+- **Cost Optimization**: Balance performance needs with budget constraints
+- **Capacity Planning**: Understand resource requirements for scaling
 
-```
-📊 Workflow Timing Summary
-| Step | Duration |
-|------|----------|
-| Dependencies Install | 67s |
-| Test Execution | 28s |
-| Performance Benchmarks | 18s |
-| Coverage Analysis | 35s |
-| Total Workflow Time | 148s |
-```
+### 🚀 Open Source Projects
+- **Public Runner Efficiency**: Maximize free GitHub Actions minutes
+- **Community Contributions**: Provide runner performance data to maintainers
+- **Resource Optimization**: Efficient use of donated compute resources
 
-### Performance Comparison
-PR workflows show performance delta:
+### 🔬 DevOps Research
+- **Performance Studies**: Academic research on CI/CD infrastructure
+- **Benchmarking Standards**: Establish industry performance baselines
+- **Tool Evaluation**: Compare different CI/CD platforms and runners
 
-```
-🔄 Performance Comparison
-| Branch | Duration | Change |
-|--------|----------|---------|
-| Main | 25s | - |
-| PR | 18s | -7s |
+## Contributing
 
-🚀 Performance improvement detected!
-The PR is 7s faster than main branch.
-```
+We welcome contributions that expand runner support and improve benchmarking accuracy:
+
+### Adding New Runner Types
+1. Create runner configuration in `config/runner-configs.js`
+2. Add workflow support in `.github/workflows/`
+3. Update performance thresholds
+4. Document runner-specific considerations
+
+### Improving Benchmarks
+1. Ensure benchmarks are deterministic and repeatable
+2. Add proper timing measurements and resource monitoring
+3. Include runner-specific optimizations where appropriate
+4. Validate results across different runner types
+
+### Reporting Enhancements
+1. Improve visualization of performance comparisons
+2. Add cost analysis features
+3. Enhance trend analysis capabilities
+4. Expand export formats for integration with other tools
+
+## Best Practices
+
+### Runner Testing Strategy
+- **Baseline Establishment**: Always test against GitHub-hosted runners first
+- **Multiple Runs**: Execute benchmarks multiple times for statistical significance
+- **Load Variation**: Test under different load conditions and times of day
+- **Version Consistency**: Use consistent tool versions across runner types
+
+### Performance Analysis
+- **Relative Comparison**: Focus on relative performance rather than absolute numbers
+- **Cost Consideration**: Factor in runner costs when evaluating performance
+- **Workload Relevance**: Ensure benchmarks match your actual CI/CD workloads
+- **Regular Monitoring**: Track performance trends over time

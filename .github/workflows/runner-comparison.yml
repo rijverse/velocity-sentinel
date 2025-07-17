@@ -1,0 +1,330 @@
+name: Runner Performance Comparison
+
+on:
+  workflow_dispatch:
+    inputs:
+      runner_type:
+        description: 'Runner type to test'
+        required: true
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - 'ubuntu-latest'
+          - 'ubuntu-latest-4-cores'
+          - 'ubuntu-latest-8-cores'
+          - 'ubuntu-latest-16-cores'
+          - 'windows-latest'
+          - 'macos-latest'
+          - 'self-hosted'
+      test_iterations:
+        description: 'Number of test iterations'
+        required: false
+        default: '3'
+        type: string
+
+jobs:
+  runner-benchmark:
+    runs-on: ${{ github.event.inputs.runner_type }}
+    
+    strategy:
+      matrix:
+        node-version: [18.x, 20.x]
+    
+    steps:
+    - name: Runner Information
+      run: |
+        echo "🏃‍♂️ Testing Runner: ${{ github.event.inputs.runner_type }}"
+        echo "💻 Runner OS: ${{ runner.os }}"
+        echo "🏗️ Runner Architecture: ${{ runner.arch }}"
+        echo "🔧 Node.js Version: ${{ matrix.node-version }}"
+        echo "🔄 Test Iterations: ${{ github.event.inputs.test_iterations }}"
+        
+        # System information
+        echo "## 🖥️ System Information" >> $GITHUB_STEP_SUMMARY
+        echo "- **Runner Type**: ${{ github.event.inputs.runner_type }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Operating System**: ${{ runner.os }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Architecture**: ${{ runner.arch }}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Node.js Version**: ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
+        
+        # Hardware information (Linux only)
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          echo "- **CPU Info**: $(nproc) cores" >> $GITHUB_STEP_SUMMARY
+          echo "- **Memory**: $(free -h | awk '/^Mem:/ {print $2}')" >> $GITHUB_STEP_SUMMARY
+          echo "- **Disk Space**: $(df -h / | awk 'NR==2 {print $2}')" >> $GITHUB_STEP_SUMMARY
+        fi
+        
+        echo "RUNNER_TYPE=${{ github.event.inputs.runner_type }}" >> $GITHUB_ENV
+        echo "TEST_ITERATIONS=${{ github.event.inputs.test_iterations }}" >> $GITHUB_ENV
+        echo "WORKFLOW_START_TIME=$(date +%s)" >> $GITHUB_ENV
+    
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Setup Node.js ${{ matrix.node-version }}
+      uses: actions/setup-node@v4
+      with:
+        node-version: ${{ matrix.node-version }}
+        cache: 'npm'
+    
+    - name: Dependency Installation Benchmark
+      run: |
+        echo "📦 Starting dependency installation benchmark..."
+        INSTALL_START=$(date +%s)
+        
+        # Clear npm cache to ensure clean install
+        npm cache clean --force
+        
+        # Install dependencies with timing
+        time npm ci --verbose
+        
+        INSTALL_END=$(date +%s)
+        INSTALL_DURATION=$((INSTALL_END - INSTALL_START))
+        echo "INSTALL_DURATION=${INSTALL_DURATION}" >> $GITHUB_ENV
+        
+        echo "✅ Dependencies installed in ${INSTALL_DURATION}s"
+        
+        # Package count and size information
+        PACKAGE_COUNT=$(npm list --depth=0 2>/dev/null | grep -c "├\|└" || echo "0")
+        NODE_MODULES_SIZE=$(du -sh node_modules 2>/dev/null | cut -f1 || echo "Unknown")
+        
+        echo "📊 Installation Metrics:"
+        echo "  - Duration: ${INSTALL_DURATION}s"
+        echo "  - Package Count: ${PACKAGE_COUNT}"
+        echo "  - node_modules Size: ${NODE_MODULES_SIZE}"
+        
+        echo "PACKAGE_COUNT=${PACKAGE_COUNT}" >> $GITHUB_ENV
+        echo "NODE_MODULES_SIZE=${NODE_MODULES_SIZE}" >> $GITHUB_ENV
+    
+    - name: CPU Performance Benchmark
+      run: |
+        echo "🔥 Running CPU-intensive benchmarks..."
+        CPU_START=$(date +%s)
+        
+        # Run CPU benchmarks multiple times
+        for i in $(seq 1 $TEST_ITERATIONS); do
+          echo "🔄 CPU Benchmark Iteration $i/$TEST_ITERATIONS"
+          npm test -- --testNamePattern="Performance Benchmarks" --verbose --testTimeout=60000
+        done
+        
+        CPU_END=$(date +%s)
+        CPU_DURATION=$((CPU_END - CPU_START))
+        echo "CPU_DURATION=${CPU_DURATION}" >> $GITHUB_ENV
+        
+        echo "⚡ CPU benchmarks completed in ${CPU_DURATION}s"
+    
+    - name: Memory and I/O Benchmark
+      run: |
+        echo "💾 Running memory and I/O benchmarks..."
+        MEMORY_START=$(date +%s)
+        
+        # Run memory-intensive tests
+        npm test -- --testNamePattern="memory|Memory" --verbose --testTimeout=60000
+        
+        # File I/O benchmark
+        echo "📁 File I/O Performance Test"
+        
+        # Create large files
+        dd if=/dev/zero of=test_file_1mb bs=1M count=1 2>/dev/null
+        dd if=/dev/zero of=test_file_10mb bs=1M count=10 2>/dev/null
+        dd if=/dev/zero of=test_file_100mb bs=1M count=100 2>/dev/null
+        
+        # Measure file operations
+        time cp test_file_100mb test_file_copy
+        time gzip test_file_copy
+        time gunzip test_file_copy.gz
+        
+        # Cleanup
+        rm -f test_file_* test_file_copy*
+        
+        MEMORY_END=$(date +%s)
+        MEMORY_DURATION=$((MEMORY_END - MEMORY_START))
+        echo "MEMORY_DURATION=${MEMORY_DURATION}" >> $GITHUB_ENV
+        
+        echo "🧠 Memory and I/O benchmarks completed in ${MEMORY_DURATION}s"
+    
+    - name: Build Performance Test
+      run: |
+        echo "🏗️ Testing build performance..."
+        BUILD_START=$(date +%s)
+        
+        # TypeScript compilation
+        echo "📝 TypeScript compilation test"
+        time npx tsc --noEmit
+        
+        # Webpack build
+        echo "📦 Webpack build test"
+        time npm run build
+        
+        # Linting performance
+        echo "🔍 Linting performance test"
+        time npm run lint
+        
+        BUILD_END=$(date +%s)
+        BUILD_DURATION=$((BUILD_END - BUILD_START))
+        echo "BUILD_DURATION=${BUILD_DURATION}" >> $GITHUB_ENV
+        
+        echo "🔨 Build operations completed in ${BUILD_DURATION}s"
+    
+    - name: Network Performance Test
+      run: |
+        echo "🌐 Testing network performance..."
+        NETWORK_START=$(date +%s)
+        
+        # Download speed test
+        echo "⬇️ Download speed test"
+        time curl -L -o /dev/null -s https://github.com/microsoft/TypeScript/archive/refs/heads/main.zip
+        
+        # Multiple concurrent downloads
+        echo "🔄 Concurrent download test"
+        time (
+          curl -L -o /dev/null -s https://registry.npmjs.org/react/latest &
+          curl -L -o /dev/null -s https://registry.npmjs.org/vue/latest &
+          curl -L -o /dev/null -s https://registry.npmjs.org/angular/latest &
+          curl -L -o /dev/null -s https://registry.npmjs.org/express/latest &
+          curl -L -o /dev/null -s https://registry.npmjs.org/webpack/latest &
+          wait
+        )
+        
+        NETWORK_END=$(date +%s)
+        NETWORK_DURATION=$((NETWORK_END - NETWORK_START))
+        echo "NETWORK_DURATION=${NETWORK_DURATION}" >> $GITHUB_ENV
+        
+        echo "📡 Network tests completed in ${NETWORK_DURATION}s"
+    
+    - name: Calculate Total Performance
+      run: |
+        WORKFLOW_END_TIME=$(date +%s)
+        TOTAL_DURATION=$((WORKFLOW_END_TIME - WORKFLOW_START_TIME))
+        echo "TOTAL_DURATION=${TOTAL_DURATION}" >> $GITHUB_ENV
+        
+        # Calculate performance score (baseline: ubuntu-latest = 100)
+        BASELINE_TIME=300  # Expected time for ubuntu-latest
+        PERFORMANCE_SCORE=$((BASELINE_TIME * 100 / TOTAL_DURATION))
+        echo "PERFORMANCE_SCORE=${PERFORMANCE_SCORE}" >> $GITHUB_ENV
+        
+        echo "## 📊 Runner Performance Summary" >> $GITHUB_STEP_SUMMARY
+        echo "| Metric | Value |" >> $GITHUB_STEP_SUMMARY
+        echo "|--------|-------|" >> $GITHUB_STEP_SUMMARY
+        echo "| **Runner Type** | ${{ env.RUNNER_TYPE }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Node.js Version** | ${{ matrix.node-version }} |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Dependencies Install** | ${INSTALL_DURATION}s |" >> $GITHUB_STEP_SUMMARY
+        echo "| **CPU Benchmarks** | ${CPU_DURATION}s |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Memory & I/O** | ${MEMORY_DURATION}s |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Build Operations** | ${BUILD_DURATION}s |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Network Tests** | ${NETWORK_DURATION}s |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Total Duration** | **${TOTAL_DURATION}s** |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Performance Score** | **${PERFORMANCE_SCORE}** |" >> $GITHUB_STEP_SUMMARY
+        
+        echo "### 📈 Performance Breakdown" >> $GITHUB_STEP_SUMMARY
+        echo "- **Package Count**: ${PACKAGE_COUNT}" >> $GITHUB_STEP_SUMMARY
+        echo "- **node_modules Size**: ${NODE_MODULES_SIZE}" >> $GITHUB_STEP_SUMMARY
+        echo "- **Test Iterations**: ${TEST_ITERATIONS}" >> $GITHUB_STEP_SUMMARY
+        
+        # Performance rating
+        if [ $PERFORMANCE_SCORE -gt 150 ]; then
+          echo "- **Rating**: 🚀 Excellent" >> $GITHUB_STEP_SUMMARY
+        elif [ $PERFORMANCE_SCORE -gt 120 ]; then
+          echo "- **Rating**: ⚡ Very Good" >> $GITHUB_STEP_SUMMARY
+        elif [ $PERFORMANCE_SCORE -gt 100 ]; then
+          echo "- **Rating**: ✅ Good" >> $GITHUB_STEP_SUMMARY
+        elif [ $PERFORMANCE_SCORE -gt 80 ]; then
+          echo "- **Rating**: ⚠️ Average" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Rating**: 🐌 Below Average" >> $GITHUB_STEP_SUMMARY
+        fi
+    
+    - name: Generate Performance Report
+      run: |
+        # Create detailed performance report
+        cat > performance-report.json << EOF
+        {
+          "runner_type": "${{ env.RUNNER_TYPE }}",
+          "node_version": "${{ matrix.node-version }}",
+          "timestamp": "$(date -u +%Y-%m-%dT%H:%M:%SZ)",
+          "metrics": {
+            "install_duration": ${INSTALL_DURATION},
+            "cpu_duration": ${CPU_DURATION},
+            "memory_duration": ${MEMORY_DURATION},
+            "build_duration": ${BUILD_DURATION},
+            "network_duration": ${NETWORK_DURATION},
+            "total_duration": ${TOTAL_DURATION},
+            "performance_score": ${PERFORMANCE_SCORE}
+          },
+          "environment": {
+            "os": "${{ runner.os }}",
+            "arch": "${{ runner.arch }}",
+            "package_count": ${PACKAGE_COUNT},
+            "node_modules_size": "${NODE_MODULES_SIZE}",
+            "test_iterations": ${TEST_ITERATIONS}
+          }
+        }
+        EOF
+        
+        echo "📄 Performance report generated"
+        cat performance-report.json
+    
+    - name: Upload Performance Report
+      uses: actions/upload-artifact@v3
+      with:
+        name: performance-report-${{ env.RUNNER_TYPE }}-node${{ matrix.node-version }}
+        path: |
+          performance-report.json
+          coverage/
+        retention-days: 30
+    
+    - name: Performance Threshold Check
+      run: |
+        echo "🎯 Checking performance thresholds..."
+        
+        # Define thresholds based on runner type
+        case "${{ env.RUNNER_TYPE }}" in
+          "ubuntu-latest")
+            MAX_INSTALL=120
+            MAX_TOTAL=300
+            ;;
+          "ubuntu-latest-4-cores")
+            MAX_INSTALL=80
+            MAX_TOTAL=200
+            ;;
+          "ubuntu-latest-8-cores")
+            MAX_INSTALL=60
+            MAX_TOTAL=150
+            ;;
+          "ubuntu-latest-16-cores")
+            MAX_INSTALL=45
+            MAX_TOTAL=120
+            ;;
+          "windows-latest")
+            MAX_INSTALL=180
+            MAX_TOTAL=400
+            ;;
+          "macos-latest")
+            MAX_INSTALL=150
+            MAX_TOTAL=350
+            ;;
+          *)
+            MAX_INSTALL=120
+            MAX_TOTAL=300
+            ;;
+        esac
+        
+        # Check thresholds
+        THRESHOLD_PASSED=true
+        
+        if [ ${INSTALL_DURATION} -gt ${MAX_INSTALL} ]; then
+          echo "❌ Installation time exceeded threshold: ${INSTALL_DURATION}s > ${MAX_INSTALL}s"
+          THRESHOLD_PASSED=false
+        fi
+        
+        if [ ${TOTAL_DURATION} -gt ${MAX_TOTAL} ]; then
+          echo "❌ Total time exceeded threshold: ${TOTAL_DURATION}s > ${MAX_TOTAL}s"
+          THRESHOLD_PASSED=false
+        fi
+        
+        if [ "$THRESHOLD_PASSED" = true ]; then
+          echo "✅ All performance thresholds passed!"
+          echo "📊 Performance within expected ranges for ${{ env.RUNNER_TYPE }}"
+        else
+          echo "⚠️ Performance thresholds exceeded - consider investigating"
+          # Don't fail the workflow, just warn
+        fi
