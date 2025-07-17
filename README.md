@@ -56,7 +56,7 @@ The suite combines intensive computational benchmarks with realistic dependency 
 Run a simple benchmark locally and see the output:
 
 ```bash
-npm run test:performance
+yarn test:performance
 ```
 
 Expected output (example):
@@ -76,16 +76,16 @@ git clone https://github.com/yourusername/velocity-sentinel.git
 cd velocity-sentinel
 
 # Install dependencies (this is part of the benchmark)
-npm install
+yarn install
 
 # Run local performance tests
-npm test
+yarn test
 
 # Run comprehensive benchmarks
-npm run test:performance
+yarn test:performance
 
 # Generate detailed reports
-npm run test:coverage
+yarn test:coverage
 ```
 
 ### Testing Specific Runners
@@ -107,7 +107,7 @@ gh workflow run comprehensive-comparison.yml
 ## Benchmark Categories
 
 ### 🔧 Infrastructure Benchmarks
-- **Dependency Installation**: npm, yarn, pnpm installation timing with 80+ packages
+- **Dependency Installation**: yarn, pnpm installation timing with 80+ packages
 - **Container Operations**: Docker build and push operations
 - **File System Performance**: Large file creation, compression, and extraction
 - **Network Throughput**: Download speeds and API response times

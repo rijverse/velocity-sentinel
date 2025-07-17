@@ -69,7 +69,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: ${{ matrix.node-version }}
-        cache: 'npm'
+        cache: 'yarn'
     
     - name: Dependency Installation Benchmark
       run: |
@@ -77,11 +77,11 @@ jobs:
         echo "📦 Starting dependency installation benchmark..."
         INSTALL_START=$(date +%s)
         
-        # Clear npm cache to ensure clean install
-        npm cache clean --force
+        # Clean yarn cache to ensure clean install
+        yarn cache clean
         
         # Install dependencies with timing
-        time npm ci --verbose > install.log 2>&1
+        time yarn install --frozen-lockfile --verbose > install.log 2>&1
         
         INSTALL_END=$(date +%s)
         INSTALL_DURATION=$((INSTALL_END - INSTALL_START))
@@ -95,7 +95,7 @@ jobs:
         
         # Package count and size information (Linux only)
         if [ "${{ runner.os }}" = "Linux" ]; then
-          PACKAGE_COUNT=$(npm list --depth=0 2>/dev/null | grep -c "├\|└" || echo "0")
+          PACKAGE_COUNT=$(yarn list --depth=0 2>/dev/null | grep -c "─ " || echo "0")
           NODE_MODULES_SIZE=$(du -sh node_modules 2>/dev/null | cut -f1 || echo "Unknown")
         else
           PACKAGE_COUNT="N/A"
@@ -119,7 +119,7 @@ jobs:
         # Run CPU benchmarks multiple times
         for i in $(seq 1 $TEST_ITERATIONS); do
           echo "🔄 CPU Benchmark Iteration $i/$TEST_ITERATIONS"
-          npm test -- --testNamePattern="Performance Benchmarks" --verbose --testTimeout=60000
+          yarn test --testNamePattern="Performance Benchmarks" --verbose --testTimeout=60000
         done
         
         CPU_END=$(date +%s)
@@ -139,7 +139,7 @@ jobs:
         MEMORY_START=$(date +%s)
         
         # Run memory-intensive tests
-        npm test -- --testNamePattern="memory|Memory" --verbose --testTimeout=60000
+        yarn test --testNamePattern="memory|Memory" --verbose --testTimeout=60000
         
         # File I/O benchmark (Linux only)
         if [ "${{ runner.os }}" = "Linux" ]; then
@@ -177,11 +177,11 @@ jobs:
         
         # Webpack build
         echo "📦 Webpack build test"
-        time npm run build
+        time yarn build
         
         # Linting performance
         echo "🔍 Linting performance test"
-        time npm run lint
+        time yarn lint
         
         BUILD_END=$(date +%s)
         BUILD_DURATION=$((BUILD_END - BUILD_START))

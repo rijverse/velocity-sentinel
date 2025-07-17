@@ -75,7 +75,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
-        cache: 'npm'
+        cache: 'yarn'
     
     - name: Runner Analysis
       id: analysis
@@ -129,11 +129,11 @@ jobs:
         echo "📦 Dependency installation analysis..."
         INSTALL_START=$(date +%s)
         
-        # Clear cache for clean measurement
-        npm cache clean --force
+        # Clean yarn cache to ensure clean install
+        yarn cache clean
         
         # Measure installation with detailed timing
-        time npm ci --verbose > install.log 2>&1
+        time yarn install --frozen-lockfile --verbose > install.log 2>&1
         
         INSTALL_END=$(date +%s)
         INSTALL_DURATION=$((INSTALL_END - INSTALL_START))
@@ -144,7 +144,7 @@ jobs:
         
         # Analyze installation log
         if [ "${{ runner.os }}" = "Linux" ]; then
-          PACKAGE_COUNT=$(npm list --depth=0 2>/dev/null | grep -c "├\|└" || echo "0")
+          PACKAGE_COUNT=$(yarn list --depth=0 2>/dev/null | grep -c "─ " || echo "0")
           NODE_MODULES_SIZE=$(du -sh node_modules 2>/dev/null | cut -f1 || echo "Unknown")
         else
           PACKAGE_COUNT="N/A"
@@ -167,7 +167,7 @@ jobs:
         PERF_START=$(date +%s)
         
         # Run comprehensive benchmarks
-        npm test -- --testNamePattern="Performance Benchmarks" --verbose --testTimeout=120000 > perf.log 2>&1
+        yarn test --testNamePattern="Performance Benchmarks" --verbose --testTimeout=120000 > perf.log 2>&1
         
         PERF_END=$(date +%s)
         PERF_DURATION=$((PERF_END - PERF_START))
@@ -208,7 +208,7 @@ jobs:
         
         # Webpack build
         WEBPACK_START=$(date +%s)
-        npm run build > build.log 2>&1
+        yarn build > build.log 2>&1
         WEBPACK_END=$(date +%s)
         WEBPACK_DURATION=$((WEBPACK_END - WEBPACK_START))
         if ! [[ "$WEBPACK_DURATION" =~ ^[0-9]+$ ]]; then
@@ -218,7 +218,7 @@ jobs:
         
         # Linting
         LINT_START=$(date +%s)
-        npm run lint > lint.log 2>&1 || true  # Don't fail on lint errors
+        yarn lint > lint.log 2>&1 || true  # Don't fail on lint errors
         LINT_END=$(date +%s)
         LINT_DURATION=$((LINT_END - LINT_START))
         if ! [[ "$LINT_DURATION" =~ ^[0-9]+$ ]]; then

@@ -29,7 +29,7 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
-        cache: 'npm'
+        cache: 'yarn'
     
     - name: Daily Performance Check
       run: |
@@ -47,10 +47,10 @@ jobs:
         BASELINE_START=$(date +%s)
         
         # Install dependencies
-        npm ci
+        yarn install --frozen-lockfile
         
         # Run core performance tests
-        npm test -- --testNamePattern="Performance Benchmarks" --verbose --testTimeout=60000
+        yarn test --testNamePattern="Performance Benchmarks" --verbose --testTimeout=60000
         
         BASELINE_END=$(date +%s)
         BASELINE_DURATION=$((BASELINE_END - BASELINE_START))

@@ -17,19 +17,19 @@ jobs:
       uses: actions/setup-node@v4
       with:
         node-version: '20.x'
-        cache: 'npm'
+        cache: 'yarn'
     
     - name: Install dependencies
       run: |
         set -e
-        npm ci
+        yarn install --frozen-lockfile
     
     - name: Run performance tests on PR
       run: |
         set -e
         echo "🔍 Running performance tests on PR branch..."
         PR_START=$(date +%s)
-        npm test -- --testNamePattern="Performance Benchmarks" --verbose > pr_performance.log 2>&1
+        yarn test --testNamePattern="Performance Benchmarks" --verbose > pr_performance.log 2>&1
         PR_END=$(date +%s)
         PR_DURATION=$((PR_END - PR_START))
         if ! [[ "$PR_DURATION" =~ ^[0-9]+$ ]]; then
@@ -47,14 +47,14 @@ jobs:
     - name: Install dependencies on main
       run: |
         set -e
-        npm ci
+        yarn install --frozen-lockfile
     
     - name: Run performance tests on main
       run: |
         set -e
         echo "🔍 Running performance tests on main branch..."
         MAIN_START=$(date +%s)
-        npm test -- --testNamePattern="Performance Benchmarks" --verbose > main_performance.log 2>&1
+        yarn test --testNamePattern="Performance Benchmarks" --verbose > main_performance.log 2>&1
         MAIN_END=$(date +%s)
         MAIN_DURATION=$((MAIN_END - MAIN_START))
         if ! [[ "$MAIN_DURATION" =~ ^[0-9]+$ ]]; then
