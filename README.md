@@ -1,10 +1,12 @@
 # ⚡ Velocity Sentinel
-**Velocity Sentinel** - Vigilant guardian of your CI/CD performance.
-A high-performance CI/CD benchmarking suite that monitors workflow execution times and guards against performance regressions in your GitHub Actions.
+
+A comprehensive CI/CD performance monitoring toolkit designed to detect workflow regressions and optimize GitHub Actions execution times through intensive benchmarking.
 
 ## Overview
 
-Velocity Sentinel provides comprehensive timing analysis for your GitHub workflows, from dependency installation to test execution and coverage reporting. Built with performance-first principles, it delivers actionable insights into your CI/CD pipeline efficiency.
+Velocity Sentinel is a specialized performance testing framework that stress-tests your CI/CD pipeline with computationally intensive benchmarks. By running demanding workloads across mathematical computations, memory operations, and async processing, it establishes baseline performance metrics and automatically detects regressions in your GitHub Actions workflows.
+
+The toolkit combines heavy dependency installations with CPU-intensive test suites to create realistic load scenarios that mirror complex production environments. This approach ensures your CI/CD pipeline can handle demanding workloads while maintaining consistent performance standards.
 
 ## Features
 
@@ -34,16 +36,16 @@ git clone https://github.com/yourusername/velocity-sentinel.git
 cd velocity-sentinel
 
 # Install dependencies
-yarn
+npm install
 
 # Run local tests
-yarn test
+npm test
 
 # Run with coverage
-yarn test:coverage
+npm run test:coverage
 
 # Verbose output
-yarn test:verbose
+npm run test:verbose
 ```
 
 ## Workflow Configuration
@@ -76,11 +78,11 @@ Default limits (configurable in workflow):
 
 | Operation | Threshold | Purpose |
 |-----------|-----------|---------|
-| Dependencies | 60s | Installation efficiency |
-| Test Execution | 30s | Core test performance |
-| Benchmarks | 15s | Algorithm performance |
-| Coverage | 45s | Coverage collection impact |
-| Total Workflow | 120s | Overall pipeline efficiency |
+| Dependencies | 90s | Installation efficiency |
+| Test Execution | 45s | Core test performance |
+| Benchmarks | 30s | Algorithm performance |
+| Coverage | 60s | Coverage collection impact |
+| Total Workflow | 180s | Overall pipeline efficiency |
 
 ## Test Categories
 
@@ -90,10 +92,13 @@ Default limits (configurable in workflow):
 - Error handling verification
 
 ### Performance Benchmarks
-- **Factorial Calculations**: Recursive algorithm timing
-- **Prime Detection**: Optimized sieve implementation
-- **Array Operations**: Sorting algorithm efficiency
-- **Async Operations**: Promise resolution timing
+- **Factorial Calculations**: Recursive algorithm timing with 1,500+ operations
+- **Prime Detection**: Optimized sieve implementation testing 50,000+ numbers
+- **Array Operations**: Multi-dataset sorting efficiency (1K-10K elements)
+- **Async Operations**: Concurrent promise resolution (225+ operations)
+- **String Processing**: Regex and manipulation on large text datasets
+- **Memory Operations**: Complex object creation and processing
+- **Mathematical Computations**: Matrix operations and statistical analysis
 
 ### Integration Tests
 - Large dataset processing
@@ -125,11 +130,11 @@ test('custom benchmark', () => {
 Edit the performance regression check in `.github/workflows/test-benchmark.yml`:
 
 ```bash
-MAX_INSTALL_TIME=60    # Dependency installation
-MAX_TEST_TIME=30       # Test execution
-MAX_PERF_TIME=15       # Performance benchmarks
-MAX_COVERAGE_TIME=45   # Coverage analysis
-MAX_TOTAL_TIME=120     # Total workflow
+MAX_INSTALL_TIME=90     # Dependency installation
+MAX_TEST_TIME=45        # Test execution
+MAX_PERF_TIME=30        # Performance benchmarks
+MAX_COVERAGE_TIME=60    # Coverage analysis
+MAX_TOTAL_TIME=180      # Total workflow
 ```
 
 ## Architecture
@@ -155,11 +160,11 @@ Each run generates a detailed timing breakdown:
 📊 Workflow Timing Summary
 | Step | Duration |
 |------|----------|
-| Dependencies Install | 23s |
-| Test Execution | 8s |
-| Performance Benchmarks | 4s |
-| Coverage Analysis | 12s |
-| Total Workflow Time | 47s |
+| Dependencies Install | 67s |
+| Test Execution | 28s |
+| Performance Benchmarks | 18s |
+| Coverage Analysis | 35s |
+| Total Workflow Time | 148s |
 ```
 
 ### Performance Comparison
@@ -169,9 +174,9 @@ PR workflows show performance delta:
 🔄 Performance Comparison
 | Branch | Duration | Change |
 |--------|----------|---------|
-| Main | 15s | - |
-| PR | 12s | -3s |
+| Main | 25s | - |
+| PR | 18s | -7s |
 
 🚀 Performance improvement detected!
-The PR is 3s faster than main branch.
+The PR is 7s faster than main branch.
 ```
