@@ -10,8 +10,7 @@ on:
         type: choice
         options:
           - 'ubuntu-latest'
-          - 'ubuntu-latest-4-cores'
-          - 'ubuntu-latest-8-cores'
+          - 'blacksmith-8vcpu-ubuntu-2404'
 
 jobs:
   test-benchmark:
