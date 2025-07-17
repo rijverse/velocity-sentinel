@@ -65,7 +65,7 @@ jobs:
         cat main_performance.log
     
     - name: Upload performance logs
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-logs
         path: |

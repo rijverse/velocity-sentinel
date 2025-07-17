@@ -304,7 +304,7 @@ jobs:
         cat performance-report.json
     
     - name: Upload Performance Report
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: performance-report-${{ env.RUNNER_TYPE }}-node${{ matrix.node-version }}
         path: |
@@ -370,7 +370,7 @@ jobs:
         fi
     
     - name: Upload logs and reports
-      uses: actions/upload-artifact@v3
+      uses: actions/upload-artifact@v4
       with:
         name: runner-comparison-logs
         path: |
