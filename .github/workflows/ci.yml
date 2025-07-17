@@ -10,14 +10,22 @@ jobs:
         runner: [github, blacksmith]
     runs-on: ${{ matrix.runner == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2404' }}
     steps:
-      - uses: actions/checkout@v3
-      - name: Set up Node.js
-        uses: actions/setup-node@v3
+      - name: Checkout PR code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: '22.x'
+          cache: 'yarn'
+
       - name: Install dependencies
-        run: npm install
+        run: |
+          set -e
+          yarn install --frozen-lockfile
+
       - name: Run tests
-        run: npm test
+        run: yarn test
+
       - name: Show runner info
         run: echo "Running on ${{ matrix.runner }}" 
