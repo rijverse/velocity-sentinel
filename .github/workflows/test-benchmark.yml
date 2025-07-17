@@ -11,6 +11,8 @@ on:
         options:
           - 'ubuntu-latest'
           - 'blacksmith-8vcpu-ubuntu-2204'
+          - 'blacksmith-16vcpu-ubuntu-2204'
+          - 'blacksmith-32vcpu-ubuntu-2204'
 
 jobs:
   test-benchmark:
