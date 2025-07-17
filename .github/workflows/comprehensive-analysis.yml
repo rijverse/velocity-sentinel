@@ -28,6 +28,11 @@ jobs:
             runner_name: "GitHub Standard"
             cost_per_minute: 0.008
             expected_performance: 100
+
+          - runner: blacksmith-16vcpu-ubuntu-2404
+            runner_name: "BlackSmith 16-Core"
+            cost_per_minute: 0.008
+            expected_performance: 140
           
           # Large GitHub runners (if enabled)
           - runner: ubuntu-latest-4-cores
@@ -42,7 +47,7 @@ jobs:
             expected_performance: 180
             condition: ${{ github.event.inputs.include_large_runners == 'true' || github.event_name == 'schedule' }}
           
-          - runner: blacksmith-16vcpu-ubuntu-2404
+          - runner: ubuntu-latest-16-cores
             runner_name: "GitHub 16-Core"
             cost_per_minute: 0.064
             expected_performance: 220
@@ -352,7 +357,7 @@ jobs:
 
   aggregate-results:
     needs: runner-matrix-analysis
-    runs-on: blacksmith-4vcpu-ubuntu-2404
+    runs-on: ubuntu-latest
     if: always()
     
     steps:
