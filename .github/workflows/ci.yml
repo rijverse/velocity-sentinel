@@ -7,7 +7,7 @@ jobs:
     strategy:
       matrix:
         runner: [github, blacksmith]
-    runs-on: ${{ matrix.runner == 'github' && 'blacksmith-8vcpu-ubuntu-2404' || 'blacksmith-8vcpu-ubuntu-2404' }}
+    runs-on: ${{ matrix.runner == 'github' && 'ubuntu-latest' || 'blacksmith-8vcpu-ubuntu-2404' }}
     steps:
       - uses: actions/checkout@v3
       - name: Set up Node.js
