@@ -28,6 +28,11 @@ jobs:
             runner_name: "GitHub Standard"
             cost_per_minute: 0.008
             expected_performance: 100
+
+          - runner: blacksmith-16vcpu-ubuntu-2404
+            runner_name: "BlackSmith 16-Core"
+            cost_per_minute: 0.008
+            expected_performance: 140
           
           # Large GitHub runners (if enabled)
           - runner: ubuntu-latest-4-cores
