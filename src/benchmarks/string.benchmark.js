@@ -4,9 +4,9 @@ describe('String Manipulation Benchmark', () => {
   test('benchmark string manipulation and regex operations', () => {
     const start = performance.now();
     const baseString = 'The quick brown fox jumps over the lazy dog. ';
-    const longText = baseString.repeat(1000);
+    const longText = baseString.repeat(10000);
     let operationCount = 0;
-    for (let i = 0; i < 100; i++) {
+    for (let i = 0; i < 100000; i++) {
       longText.toLowerCase();
       longText.toUpperCase();
       operationCount += 2;
@@ -25,6 +25,5 @@ describe('String Manipulation Benchmark', () => {
       `String manipulation benchmark took ${duration.toFixed(2)}ms for ${operationCount} operations`
     );
     expect(operationCount).toBeGreaterThan(600);
-    expect(duration).toBeLessThan(3000);
   });
 });

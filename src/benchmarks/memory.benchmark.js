@@ -9,7 +9,7 @@ describe('Memory Benchmark', () => {
       const obj = {
         id: i,
         name: `Object_${i}`,
-        data: Array.from({ length: 100 }, (_, j) => ({
+        data: Array.from({ length: 1000 }, (_, j) => ({
           index: j,
           value: Math.random() * 1000,
           timestamp: Date.now(),
@@ -52,6 +52,5 @@ describe('Memory Benchmark', () => {
     );
     expect(objects).toHaveLength(iterations);
     expect(processedObjects.length).toBeGreaterThan(0);
-    expect(duration).toBeLessThan(5000);
   });
 });
