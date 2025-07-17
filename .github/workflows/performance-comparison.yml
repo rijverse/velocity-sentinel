@@ -2,7 +2,7 @@ name: Performance Comparison
 
 on:
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   workflow_dispatch:
 
 jobs:
@@ -32,17 +32,17 @@ jobs:
         echo "PR_DURATION=${PR_DURATION}" >> $GITHUB_ENV
         cat pr_performance.log
     
-    - name: Checkout master branch
+    - name: Checkout main branch
       uses: actions/checkout@v4
       with:
-        ref: master
+        ref: main
     
-    - name: Install dependencies on master
+    - name: Install dependencies on main
       run: npm ci
     
-    - name: Run performance tests on master
+    - name: Run performance tests on main
       run: |
-        echo "🔍 Running performance tests on master branch..."
+        echo "🔍 Running performance tests on main branch..."
         MAIN_START=$(date +%s)
         npm test -- --testNamePattern="Performance Benchmarks" --verbose > main_performance.log 2>&1
         MAIN_END=$(date +%s)
@@ -67,7 +67,7 @@ jobs:
           IMPROVEMENT=$(( MAIN_DURATION - PR_DURATION ))
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "🚀 **Performance improvement detected!**" >> $GITHUB_STEP_SUMMARY
-          echo "The PR is ${IMPROVEMENT}s faster than master branch." >> $GITHUB_STEP_SUMMARY
+          echo "The PR is ${IMPROVEMENT}s faster than main branch." >> $GITHUB_STEP_SUMMARY
         else
           echo "" >> $GITHUB_STEP_SUMMARY
           echo "✅ **No performance change detected.**" >> $GITHUB_STEP_SUMMARY

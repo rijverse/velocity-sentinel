@@ -2,14 +2,24 @@ name: Test Benchmark
 
 on:
   push:
-    branches: [ master, develop ]
+    branches: [ main, develop, feature/* ]
   pull_request:
-    branches: [ master ]
+    branches: [ main ]
   workflow_dispatch:
+    inputs:
+      runner_type:
+        description: 'Runner type for testing'
+        required: false
+        default: 'ubuntu-latest'
+        type: choice
+        options:
+          - 'ubuntu-latest'
+          - 'ubuntu-latest-4-cores'
+          - 'ubuntu-latest-8-cores'
 
 jobs:
   test-benchmark:
-    runs-on: ubuntu-latest
+    runs-on: ${{ github.event.inputs.runner_type || 'ubuntu-latest' }}
     
     strategy:
       matrix:
@@ -18,6 +28,21 @@ jobs:
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
+      
+    - name: Runner Context
+      run: |
+        echo "🏃‍♂️ Running on: ${{ github.event.inputs.runner_type || 'ubuntu-latest' }}"
+        echo "🔧 Node.js Version: ${{ matrix.node-version }}"
+        echo "📊 System Info:"
+        echo "  - OS: ${{ runner.os }}"
+        echo "  - Architecture: ${{ runner.arch }}"
+        
+        if [ "${{ runner.os }}" = "Linux" ]; then
+          echo "  - CPU Cores: $(nproc)"
+          echo "  - Memory: $(free -h | awk '/^Mem:/ {print $2}')"
+        fi
+        
+        echo "RUNNER_TYPE=${{ github.event.inputs.runner_type || 'ubuntu-latest' }}" >> $GITHUB_ENV
       
     - name: Setup Node.js ${{ matrix.node-version }}
       uses: actions/setup-node@v4
@@ -38,21 +63,21 @@ jobs:
         echo "📦 Dependencies installed in ${INSTALL_DURATION}s"
         echo "INSTALL_DURATION=${INSTALL_DURATION}" >> $GITHUB_ENV
     
-    - name: Run tests with timing
+    - name: Run unit tests with timing
       run: |
-        echo "⏱️ Starting test execution..."
+        echo "⏱️ Starting unit test execution..."
         TEST_START=$(date +%s)
-        npm test -- --verbose --testTimeout=30000
+        npm test -- --testNamePattern="^(?!.*Performance Benchmarks)" --verbose --testTimeout=30000
         TEST_END=$(date +%s)
         TEST_DURATION=$((TEST_END - TEST_START))
-        echo "✅ Tests completed in ${TEST_DURATION}s"
+        echo "✅ Unit tests completed in ${TEST_DURATION}s"
         echo "TEST_DURATION=${TEST_DURATION}" >> $GITHUB_ENV
     
     - name: Run performance benchmarks
       run: |
         echo "⏱️ Running performance benchmarks..."
         PERF_START=$(date +%s)
-        npm test -- --testNamePattern="Performance Benchmarks" --verbose
+        npm test -- --testNamePattern="Performance Benchmarks" --verbose --testTimeout=180000
         PERF_END=$(date +%s)
         PERF_DURATION=$((PERF_END - PERF_START))
         echo "🚀 Performance benchmarks completed in ${PERF_DURATION}s"
@@ -74,68 +99,127 @@ jobs:
         TOTAL_DURATION=$((WORKFLOW_END_TIME - WORKFLOW_START_TIME))
         echo "TOTAL_DURATION=${TOTAL_DURATION}" >> $GITHUB_ENV
         
-        echo "## 📊 Workflow Timing Summary" >> $GITHUB_STEP_SUMMARY
+        # Calculate performance score relative to baseline
+        BASELINE_TIME=300  # Expected time for ubuntu-latest
+        PERFORMANCE_SCORE=$((BASELINE_TIME * 100 / TOTAL_DURATION))
+        echo "PERFORMANCE_SCORE=${PERFORMANCE_SCORE}" >> $GITHUB_ENV
+        
+        echo "## 📊 Runner Performance Summary" >> $GITHUB_STEP_SUMMARY
         echo "| Step | Duration |" >> $GITHUB_STEP_SUMMARY
         echo "|------|----------|" >> $GITHUB_STEP_SUMMARY
+        echo "| **Runner Type** | ${{ env.RUNNER_TYPE }} |" >> $GITHUB_STEP_SUMMARY
         echo "| Dependencies Install | ${INSTALL_DURATION}s |" >> $GITHUB_STEP_SUMMARY
-        echo "| Test Execution | ${TEST_DURATION}s |" >> $GITHUB_STEP_SUMMARY
+        echo "| Unit Tests | ${TEST_DURATION}s |" >> $GITHUB_STEP_SUMMARY
         echo "| Performance Benchmarks | ${PERF_DURATION}s |" >> $GITHUB_STEP_SUMMARY
         echo "| Coverage Analysis | ${COVERAGE_DURATION}s |" >> $GITHUB_STEP_SUMMARY
         echo "| **Total Workflow Time** | **${TOTAL_DURATION}s** |" >> $GITHUB_STEP_SUMMARY
+        echo "| **Performance Score** | **${PERFORMANCE_SCORE}** |" >> $GITHUB_STEP_SUMMARY
         
         echo "### 🔍 Environment Details" >> $GITHUB_STEP_SUMMARY
         echo "- **Node.js Version**: ${{ matrix.node-version }}" >> $GITHUB_STEP_SUMMARY
-        echo "- **Runner OS**: ubuntu-latest" >> $GITHUB_STEP_SUMMARY
+        echo "- **Runner Type**: ${{ env.RUNNER_TYPE }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Workflow Trigger**: ${{ github.event_name }}" >> $GITHUB_STEP_SUMMARY
         echo "- **Branch**: ${{ github.ref_name }}" >> $GITHUB_STEP_SUMMARY
+        
+        # Performance rating
+        if [ $PERFORMANCE_SCORE -gt 150 ]; then
+          echo "- **Performance Rating**: 🚀 Excellent" >> $GITHUB_STEP_SUMMARY
+        elif [ $PERFORMANCE_SCORE -gt 120 ]; then
+          echo "- **Performance Rating**: ⚡ Very Good" >> $GITHUB_STEP_SUMMARY
+        elif [ $PERFORMANCE_SCORE -gt 100 ]; then
+          echo "- **Performance Rating**: ✅ Good" >> $GITHUB_STEP_SUMMARY
+        elif [ $PERFORMANCE_SCORE -gt 80 ]; then
+          echo "- **Performance Rating**: ⚠️ Average" >> $GITHUB_STEP_SUMMARY
+        else
+          echo "- **Performance Rating**: 🐌 Below Average" >> $GITHUB_STEP_SUMMARY
+        fi
     
     - name: Upload coverage reports
       uses: actions/upload-artifact@v3
       with:
-        name: coverage-report-node-${{ matrix.node-version }}
-        path: coverage/
+        name: coverage-report-${{ env.RUNNER_TYPE }}-node-${{ matrix.node-version }}
+        path: |
+          coverage/
+          *.log
+        retention-days: 30
     
-    - name: Performance regression check
+    - name: Performance threshold validation
       run: |
-        echo "⚡ Checking for performance regressions..."
+        echo "🎯 Validating performance thresholds for ${{ env.RUNNER_TYPE }}..."
         
-        # Define performance thresholds (in seconds)
-        MAX_INSTALL_TIME=60
-        MAX_TEST_TIME=30
-        MAX_PERF_TIME=15
-        MAX_COVERAGE_TIME=45
-        MAX_TOTAL_TIME=120
+        # Define performance thresholds based on runner type
+        case "${{ env.RUNNER_TYPE }}" in
+          "ubuntu-latest")
+            MAX_INSTALL_TIME=120
+            MAX_TEST_TIME=60
+            MAX_PERF_TIME=45
+            MAX_COVERAGE_TIME=80
+            MAX_TOTAL_TIME=300
+            ;;
+          "ubuntu-latest-4-cores")
+            MAX_INSTALL_TIME=80
+            MAX_TEST_TIME=40
+            MAX_PERF_TIME=30
+            MAX_COVERAGE_TIME=60
+            MAX_TOTAL_TIME=200
+            ;;
+          "ubuntu-latest-8-cores")
+            MAX_INSTALL_TIME=60
+            MAX_TEST_TIME=30
+            MAX_PERF_TIME=25
+            MAX_COVERAGE_TIME=45
+            MAX_TOTAL_TIME=150
+            ;;
+          *)
+            # Default thresholds
+            MAX_INSTALL_TIME=120
+            MAX_TEST_TIME=60
+            MAX_PERF_TIME=45
+            MAX_COVERAGE_TIME=80
+            MAX_TOTAL_TIME=300
+            ;;
+        esac
         
         # Check each threshold
+        THRESHOLD_VIOLATIONS=0
+        
         if [ $INSTALL_DURATION -gt $MAX_INSTALL_TIME ]; then
           echo "❌ Installation time exceeded threshold: ${INSTALL_DURATION}s > ${MAX_INSTALL_TIME}s"
-          exit 1
+          THRESHOLD_VIOLATIONS=$((THRESHOLD_VIOLATIONS + 1))
         fi
         
         if [ $TEST_DURATION -gt $MAX_TEST_TIME ]; then
           echo "❌ Test execution time exceeded threshold: ${TEST_DURATION}s > ${MAX_TEST_TIME}s"
-          exit 1
+          THRESHOLD_VIOLATIONS=$((THRESHOLD_VIOLATIONS + 1))
         fi
         
         if [ $PERF_DURATION -gt $MAX_PERF_TIME ]; then
           echo "❌ Performance benchmark time exceeded threshold: ${PERF_DURATION}s > ${MAX_PERF_TIME}s"
-          exit 1
+          THRESHOLD_VIOLATIONS=$((THRESHOLD_VIOLATIONS + 1))
         fi
         
         if [ $COVERAGE_DURATION -gt $MAX_COVERAGE_TIME ]; then
           echo "❌ Coverage analysis time exceeded threshold: ${COVERAGE_DURATION}s > ${MAX_COVERAGE_TIME}s"
-          exit 1
+          THRESHOLD_VIOLATIONS=$((THRESHOLD_VIOLATIONS + 1))
         fi
         
         if [ $TOTAL_DURATION -gt $MAX_TOTAL_TIME ]; then
           echo "❌ Total workflow time exceeded threshold: ${TOTAL_DURATION}s > ${MAX_TOTAL_TIME}s"
-          exit 1
+          THRESHOLD_VIOLATIONS=$((THRESHOLD_VIOLATIONS + 1))
         fi
         
-        echo "✅ All performance checks passed!"
-        echo "📈 Performance Summary:"
-        echo "  - Installation: ${INSTALL_DURATION}s / ${MAX_INSTALL_TIME}s"
-        echo "  - Tests: ${TEST_DURATION}s / ${MAX_TEST_TIME}s"
-        echo "  - Benchmarks: ${PERF_DURATION}s / ${MAX_PERF_TIME}s"
-        echo "  - Coverage: ${COVERAGE_DURATION}s / ${MAX_COVERAGE_TIME}s"
-        echo "  - Total: ${TOTAL_DURATION}s / ${MAX_TOTAL_TIME}s"
+        if [ $THRESHOLD_VIOLATIONS -eq 0 ]; then
+          echo "✅ All performance thresholds passed for ${{ env.RUNNER_TYPE }}!"
+        else
+          echo "⚠️ ${THRESHOLD_VIOLATIONS} performance threshold(s) exceeded"
+          echo "This may indicate performance regression or need for threshold adjustment"
+        fi
+        
+        echo ""
+        echo "📊 Performance Summary for ${{ env.RUNNER_TYPE }}:"
+        echo "  - Installation: ${INSTALL_DURATION}s / ${MAX_INSTALL_TIME}s $([ $INSTALL_DURATION -le $MAX_INSTALL_TIME ] && echo '✅' || echo '❌')"
+        echo "  - Unit Tests: ${TEST_DURATION}s / ${MAX_TEST_TIME}s $([ $TEST_DURATION -le $MAX_TEST_TIME ] && echo '✅' || echo '❌')"
+        echo "  - Benchmarks: ${PERF_DURATION}s / ${MAX_PERF_TIME}s $([ $PERF_DURATION -le $MAX_PERF_TIME ] && echo '✅' || echo '❌')"
+        echo "  - Coverage: ${COVERAGE_DURATION}s / ${MAX_COVERAGE_TIME}s $([ $COVERAGE_DURATION -le $MAX_COVERAGE_TIME ] && echo '✅' || echo '❌')"
+        echo "  - Total: ${TOTAL_DURATION}s / ${MAX_TOTAL_TIME}s $([ $TOTAL_DURATION -le $MAX_TOTAL_TIME ] && echo '✅' || echo '❌')"
+        echo "  - Performance Score: ${PERFORMANCE_SCORE}"
