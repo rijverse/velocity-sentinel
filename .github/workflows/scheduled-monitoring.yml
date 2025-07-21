@@ -1,9 +1,9 @@
 name: Scheduled Performance Monitoring
 
 on:
-  schedule:
-    # Run daily at 6 AM UTC
-    - cron: '0 6 * * *'
+#  schedule:
+#    # Run daily at 6 AM UTC
+#    - cron: '0 6 * * *'
   workflow_dispatch:
     inputs:
       monitoring_type:
