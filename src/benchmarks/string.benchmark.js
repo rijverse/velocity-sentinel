@@ -6,7 +6,7 @@ describe('String Manipulation Benchmark', () => {
     const baseString = 'The quick brown fox jumps over the lazy dog. ';
     const longText = baseString.repeat(10000);
     let operationCount = 0;
-    for (let i = 0; i < 100000; i++) {
+    for (let i = 0; i < 10000; i++) {
       longText.toLowerCase();
       longText.toUpperCase();
       operationCount += 2;

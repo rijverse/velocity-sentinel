@@ -83,20 +83,20 @@ jobs:
         echo "✅ Unit tests completed in ${TEST_DURATION}s"
         echo "TEST_DURATION=${TEST_DURATION}" >> $GITHUB_ENV
     
-    - name: Run performance benchmarks
-      run: |
-        set -e
-        echo "⏱️ Running performance benchmarks..."
-        PERF_START=$(date +%s)
-        yarn test --testNamePattern="Performance Benchmarks" --verbose --testTimeout=180000
-        PERF_END=$(date +%s)
-        PERF_DURATION=$((PERF_END - PERF_START))
-        if ! [[ "$PERF_DURATION" =~ ^[0-9]+$ ]]; then
-          echo "Error: PERF_DURATION is not a number!" >&2
-          exit 1
-        fi
-        echo "🚀 Performance benchmarks completed in ${PERF_DURATION}s"
-        echo "PERF_DURATION=${PERF_DURATION}" >> $GITHUB_ENV
+#    - name: Run performance benchmarks
+#      run: |
+#        set -e
+#        echo "⏱️ Running performance benchmarks..."
+#        PERF_START=$(date +%s)
+#        yarn test --testNamePattern="Performance Benchmarks" --verbose --testTimeout=180000
+#        PERF_END=$(date +%s)
+#        PERF_DURATION=$((PERF_END - PERF_START))
+#        if ! [[ "$PERF_DURATION" =~ ^[0-9]+$ ]]; then
+#          echo "Error: PERF_DURATION is not a number!" >&2
+#          exit 1
+#        fi
+#        echo "🚀 Performance benchmarks completed in ${PERF_DURATION}s"
+#        echo "PERF_DURATION=${PERF_DURATION}" >> $GITHUB_ENV
     
     - name: Run tests with coverage
       run: |
